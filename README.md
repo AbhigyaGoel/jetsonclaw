@@ -61,7 +61,8 @@ curl -fsSL https://ollama.com/install.sh | sh && ollama pull qwen2.5:3b
 
 # Claude auth: on any machine with a browser
 claude setup-token        # then on the Jetson:
-echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env
+echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env   # for the systemd service
+echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.bashrc    # for terminal runs
 ```
 
 Run it:

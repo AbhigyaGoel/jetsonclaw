@@ -41,7 +41,9 @@ if ! command -v claude >/dev/null 2>&1; then
     curl -fsSL https://claude.ai/install.sh | bash
     echo
     echo ">> AUTH: on a machine WITH a browser run:  claude setup-token"
-    echo ">> then on this Jetson:  echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.bashrc"
+    echo ">> then on this Jetson:"
+    echo ">>   echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env"
+    echo ">>   echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.bashrc"
 fi
 
 # --- whisper model warmup (downloads on first use otherwise) ---
