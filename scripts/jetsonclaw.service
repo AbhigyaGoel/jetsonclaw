@@ -1,0 +1,17 @@
+[Unit]
+Description=JetsonClaw — JARVIS on a Jetson
+After=network-online.target sound.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=abhigya
+WorkingDirectory=/home/abhigya/jetsonclaw
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/home/abhigya/.jetsonclaw/env
+ExecStart=/home/abhigya/.jetsonclaw/venv/bin/python -m jetsonclaw --headless
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

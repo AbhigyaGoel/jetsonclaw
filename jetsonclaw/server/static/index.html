@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04070d">
+<link rel="manifest" href="/manifest.json">
+<title>JETSONCLAW</title>
+<style>
+  :root {
+    --bg: #04070d; --core: #4be1ff; --dim: #1a3a4a;
+    --text: #c8e6f2; --muted: #4a6a7a; --accent: #ff9b4b; --err: #ff5b5b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace; overflow: hidden; }
+  #stage { display: grid; height: 100%;
+    grid-template-rows: minmax(220px, 38%) 1fr; gap: 0; }
+  /* --- core --- */
+  #corewrap { position: relative; display: grid; place-items: center; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #state { position: relative; z-index: 2; text-align: center; pointer-events: none; }
+  #state .word { font-size: clamp(22px, 5vw, 44px); letter-spacing: .45em;
+    text-indent: .45em; color: var(--core); text-shadow: 0 0 24px var(--core); }
+  #state .detail { margin-top: 8px; font-size: 11px; color: var(--muted);
+    max-width: 70vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin-left: auto; margin-right: auto; }
+  /* --- panels --- */
+  #panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    padding: 10px; min-height: 0; }
+  @media (max-width: 700px) { #panels { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--dim); border-radius: 10px; display: flex;
+    flex-direction: column; min-height: 0; background: rgba(75,225,255,.02); }
+  .panel h2 { font-size: 10px; font-weight: normal; letter-spacing: .3em;
+    color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--dim); }
+  .panel .feed { flex: 1; overflow-y: auto; padding: 10px 12px; font-size: 12.5px;
+    line-height: 1.55; scrollbar-width: thin; }
+  .you   { color: var(--text); }
+  .you::before { content: "» "; color: var(--core); }
+  .jarvis { color: var(--core); margin-bottom: .6em; }
+  .jarvis::before { content: "« "; color: var(--muted); }
+  .tool  { color: var(--accent); }
+  .tool::before { content: "⚙ "; }
+  .agent-text { color: var(--muted); }
+  .ok    { color: #6bffb0; }
+  .error { color: var(--err); }
+  .meta  { color: var(--muted); font-size: 10.5px; }
+  #conn { position: fixed; top: 10px; right: 14px; font-size: 10px;
+    letter-spacing: .2em; color: var(--err); z-index: 3; }
+  #conn.live { color: #6bffb0; }
+</style>
+</head>
+<body>
+<div id="conn">OFFLINE</div>
+<div id="stage">
+  <div id="corewrap">
+    <canvas id="core"></canvas>
+    <div id="state"><div class="word">BOOT</div><div class="detail"></div></div>
+  </div>
+  <div id="panels">
+    <div class="panel"><h2>CONVERSATION</h2><div class="feed" id="convo"></div></div>
+    <div class="panel"><h2>AGENT ACTIVITY</h2><div class="feed" id="agent"></div></div>
+  </div>
+</div>
+<script>
+const canvas = document.getElementById('core'), ctx = canvas.getContext('2d');
+const stateWord = document.querySelector('#state .word');
+const stateDetail = document.querySelector('#state .detail');
+const convo = document.getElementById('convo'), agentFeed = document.getElementById('agent');
+const conn = document.getElementById('conn');
+
+const STATE_WORDS = { idle: 'STANDBY', listening: 'LISTENING', transcribing: 'PARSING',
+  thinking: 'THINKING', working: 'WORKING', speaking: 'SPEAKING' };
+const STATE_COLORS = { idle: '#4be1ff', listening: '#6bffb0', transcribing: '#ffe16b',
+  thinking: '#ffe16b', working: '#ff9b4b', speaking: '#b06bff' };
+
+let level = 0, targetLevel = 0, color = '#4be1ff', t = 0;
+
+function resize() {
+  const r = canvas.parentElement.getBoundingClientRect();
+  canvas.width = r.width * devicePixelRatio; canvas.height = r.height * devicePixelRatio;
+}
+addEventListener('resize', resize); resize();
+
+function draw() {
+  t += 0.016;
+  level += (targetLevel - level) * 0.18;
+  const w = canvas.width, h = canvas.height, cx = w / 2, cy = h / 2;
+  const base = Math.min(w, h) * 0.26;
+  ctx.clearRect(0, 0, w, h);
+
+  // breathing glow
+  const glow = ctx.createRadialGradient(cx, cy, base * 0.2, cx, cy, base * 2.2);
+  glow.addColorStop(0, color + '30'); glow.addColorStop(1, 'transparent');
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+
+  // reactive ring: 96 spokes modulated by level + slow sine drift
+  ctx.lineWidth = Math.max(1.5, base * 0.012);
+  for (let i = 0; i < 96; i++) {
+    const a = (i / 96) * Math.PI * 2;
+    const wobble = Math.sin(t * 2.1 + i * 0.62) * 0.5 + 0.5;
+    const len = base * (0.12 + level * 0.55 * wobble + 0.05 * Math.sin(t + i));
+    const r0 = base, r1 = base + len;
+    ctx.strokeStyle = color + (wobble > 0.5 ? 'cc' : '55');
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+    ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+    ctx.stroke();
+  }
+  // inner rings
+  for (const [radius, alpha] of [[0.86, '66'], [0.7, '33'], [0.55, '22']]) {
+    ctx.strokeStyle = color + alpha;
+    ctx.beginPath(); ctx.arc(cx, cy, base * radius, 0, Math.PI * 2); ctx.stroke();
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function feedLine(el, cls, text) {
+  const div = document.createElement('div');
+  div.className = cls; div.textContent = text;
+  el.appendChild(div);
+  while (el.childNodes.length > 200) el.removeChild(el.firstChild);
+  el.scrollTop = el.scrollHeight;
+}
+
+function handle(ev) {
+  const d = ev.data || {};
+  switch (ev.type) {
+    case 'state': {
+      const s = d.state || 'idle';
+      stateWord.textContent = STATE_WORDS[s] || s.toUpperCase();
+      color = STATE_COLORS[s] || '#4be1ff';
+      stateWord.style.color = color; stateWord.style.textShadow = `0 0 24px ${color}`;
+      stateDetail.textContent = d.detail || '';
+      break;
+    }
+    case 'audio_level': targetLevel = Math.min(1, (d.rms || 0) / 2500); break;
+    case 'wake': feedLine(convo, 'meta', `— wake ${(d.score || 0).toFixed(2)} —`); break;
+    case 'transcript': feedLine(convo, 'you', d.text || ''); break;
+    case 'response': feedLine(convo, 'jarvis', d.text || ''); break;
+    case 'agent_start': feedLine(agentFeed, 'meta', `▶ ${d.kind}: ${d.task || ''}`); break;
+    case 'agent_output':
+      feedLine(agentFeed, d.kind === 'tool' ? 'tool' : d.kind === 'error' ? 'error' : 'agent-text',
+               (d.text || '').slice(0, 300));
+      break;
+    case 'agent_done': feedLine(agentFeed, d.ok ? 'ok' : 'error', d.ok ? '✔ done' : '✘ failed'); break;
+    case 'error': feedLine(convo, 'error', '! ' + (d.message || '')); break;
+    case 'speaking': if (d.active) targetLevel = 0.6; break;
+  }
+}
+
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => { conn.textContent = 'LIVE'; conn.classList.add('live'); };
+  ws.onmessage = (m) => { try { handle(JSON.parse(m.data)); } catch (_) {} };
+  ws.onclose = () => {
+    conn.textContent = 'OFFLINE'; conn.classList.remove('live');
+    targetLevel = 0; setTimeout(connect, 2000);
+  };
+}
+connect();
+</script>
+</body>
+</html>

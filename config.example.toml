@@ -1,0 +1,37 @@
+# JetsonClaw configuration — copy to ~/.jetsonclaw/config.toml and edit.
+# Everything here is optional; unspecified values use sensible Jetson defaults.
+
+[audio]
+mic_device = "plughw:2,0"     # find yours: arecord -l
+speaker_device = "default"     # find yours: aplay -l (e.g. "plughw:0,3" for HDMI)
+silence_rms = 500.0
+silence_secs = 1.5
+
+[wake]
+model = "hey_jarvis_v0.1"
+threshold = 0.3                # lower = more sensitive
+
+[stt]
+model = "base"                 # tiny is faster but mishears uncommon words
+
+[tts]
+enabled = true
+voice = "en_GB-alan-medium"    # the butler. browse: rhasspy.github.io/piper-samples
+length_scale = 1.0             # >1 = slower speech
+
+[ollama]
+model = "qwen2.5:3b"
+num_predict = 150
+
+[claude]
+workdir = "~/jetsonclaw"       # where agent tasks run by default
+timeout_secs = 600
+permission_mode = "acceptEdits"
+allowed_tools = "Read,Edit,Write,Glob,Grep,Bash"
+
+[spotify]
+token_file = "~/spotify_tokens.json"
+
+[server]
+host = "0.0.0.0"
+port = 8484

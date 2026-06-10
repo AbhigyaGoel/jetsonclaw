@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jetsonclaw"
+version = "0.1.0"
+description = "JARVIS on a Jetson — local voice, agentic brain, self-iterating."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.24,<2",            # tflite-runtime on Jetson crashes on numpy 2.x
+    "openwakeword>=0.6",
+    "faster-whisper>=1.0",
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "websockets>=12",
+    "textual>=0.58",
+    "tomli>=2.0; python_version < '3.11'",
+    # selftest is a product feature (self-iteration gate), so test deps ship
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+]
+
+[project.optional-dependencies]
+voice = ["piper-tts>=1.4"]
+dev = ["ruff>=0.4"]
+
+[project.scripts]
+jetsonclaw = "jetsonclaw.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["jetsonclaw*"]
+
+[tool.setuptools.package-data]
+"jetsonclaw.server" = ["static/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

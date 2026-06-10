@@ -1,0 +1,10 @@
+{
+  "name": "JetsonClaw",
+  "short_name": "JARVIS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04070d",
+  "theme_color": "#04070d",
+  "description": "JARVIS on a Jetson — live voice assistant dashboard",
+  "icons": []
+}
