@@ -29,10 +29,10 @@ class JarvisTUI(App):
     CSS = """
     #status { height: 8; content-align: center middle; color: cyan; }
     #vu { height: 1; color: green; }
-    #detail { height: 1; color: grey50; }
+    #detail { height: 1; color: #7a8a94; }
     #convo { border: round cyan; height: 1fr; }
     #agent { border: round magenta; height: 1fr; }
-    #hint { height: 1; color: grey50; }
+    #hint { height: 1; color: #7a8a94; }
     """
 
     def __init__(self, jarvis: Jarvis, bus: EventBus) -> None:
