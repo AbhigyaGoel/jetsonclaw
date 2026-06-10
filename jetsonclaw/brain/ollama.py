@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+import urllib.error
 import urllib.request
 
 from ..config import OllamaConfig
@@ -43,6 +45,15 @@ class OllamaBrain:
             self._cfg.url, data=payload,
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=self._cfg.timeout_secs) as resp:
-            result = json.loads(resp.read().decode())
-        return result.get("response", "").strip()
+        # Shared CPU/GPU memory on Jetson: model load can transiently OOM
+        # (HTTP 500) under cache pressure — one retry usually succeeds.
+        for attempt in (1, 2):
+            try:
+                with urllib.request.urlopen(req, timeout=self._cfg.timeout_secs) as resp:
+                    result = json.loads(resp.read().decode())
+                return result.get("response", "").strip()
+            except urllib.error.HTTPError as e:
+                if e.code != 500 or attempt == 2:
+                    raise
+                time.sleep(2)
+        return ""
