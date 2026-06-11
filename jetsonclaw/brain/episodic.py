@@ -73,17 +73,42 @@ class EpisodicStore:
                     continue
         return episodes
 
+    WORKING_TTL_SECS = 600.0
+    WORKING_MAX_TURNS = 6
+
+    def recent_turns(self, now: float | None = None,
+                     floor: float = 0.0) -> list[Episode]:
+        """Working memory: the last few turns, unless cleared past `floor`."""
+        now = time.time() if now is None else now
+        cutoff = max(now - self.WORKING_TTL_SECS, floor)
+        recent = [ep for ep in self.all() if ep.ts >= cutoff]
+        return recent[-self.WORKING_MAX_TURNS:]
+
+    def as_prompt(self, new_text: str, now: float | None = None,
+                  floor: float = 0.0) -> str:
+        """Render working memory + the new utterance for a completion endpoint."""
+        turns = self.recent_turns(now, floor)
+        if not turns:
+            return new_text
+        lines = []
+        for t in turns:
+            lines.append(f"User: {t.user}")
+            lines.append(f"Assistant: {t.reply}")
+        lines.append(f"User: {new_text}")
+        lines.append("Assistant:")
+        return "Previous conversation:\n" + "\n".join(lines)
+
     def search(self, query: str, limit: int = 3,
                now: float | None = None) -> list[Episode]:
-        """Keyword overlap, recency-boosted. Skips the last few minutes so the
-        current conversation (already in working memory) isn't echoed back."""
+        """Keyword overlap, recency-boosted. Skips the working-memory window so
+        the current conversation isn't echoed back into itself."""
         words = _keywords(query)
         if not words:
             return []
         now = time.time() if now is None else now
         scored = []
         for ep in self.all():
-            if now - ep.ts < 300:
+            if now - ep.ts < self.WORKING_TTL_SECS:
                 continue
             overlap = len(words & (_keywords(ep.user) | _keywords(ep.reply)))
             if overlap == 0:

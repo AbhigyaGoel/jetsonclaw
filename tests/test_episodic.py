@@ -59,3 +59,26 @@ def test_on_day_and_unconsolidated(tmp_path):
 def test_keywords_drop_stopwords():
     assert "guitar" in _keywords("what about the guitar")
     assert "the" not in _keywords("what about the guitar")
+
+
+def test_recent_turns_and_prompt(tmp_path):
+    store = store_with(tmp_path, [
+        (NOW - 60, "what's the weather", "Sunny, sir."),
+        (NOW - 30, "thanks", "Anytime."),
+    ])
+    prompt = store.as_prompt("what about tomorrow", now=NOW)
+    assert "Sunny, sir." in prompt
+    assert prompt.rstrip().endswith("Assistant:")
+
+
+def test_context_floor_clears_working_memory(tmp_path):
+    store = store_with(tmp_path, [(NOW - 60, "secret stuff", "Noted.")])
+    assert store.as_prompt("hi", now=NOW, floor=NOW - 10) == "hi"
+
+
+def test_working_memory_capped_at_max_turns(tmp_path):
+    store = store_with(tmp_path,
+                       [(NOW - 500 + i, f"q{i}", f"a{i}") for i in range(10)])
+    turns = store.recent_turns(now=NOW)
+    assert len(turns) == store.WORKING_MAX_TURNS
+    assert turns[-1].user == "q9"

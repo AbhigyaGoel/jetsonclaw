@@ -86,6 +86,24 @@ class Workspace:
             return ""
         return path.read_text(encoding="utf-8", errors="replace")[:cap]
 
+    def remember(self, fact: str) -> None:
+        """Append an owner-stated fact straight to long-term memory."""
+        from datetime import date
+
+        with open(self.root / "MEMORY.md", "a", encoding="utf-8") as f:
+            f.write(f"- {fact.strip()} <!-- told {date.today()} -->\n")
+
+    def memory_lines(self, query: str) -> list[str]:
+        """Long-term facts whose text overlaps the query keywords."""
+        from .brain.episodic import _keywords
+
+        words = _keywords(query)
+        if not words:
+            return []
+        text = self._read("MEMORY.md")
+        return [ln for ln in text.splitlines()
+                if ln.strip().startswith("-") and words & _keywords(ln)]
+
     def persona_prompt(self, fast: bool = False) -> str:
         """Combined persona/memory block for system prompts. `fast` caps each
         file hard — every extra KB is prefill latency on the 3B local model."""

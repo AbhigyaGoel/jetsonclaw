@@ -32,3 +32,20 @@ def test_chat_reset(text):
 
 def test_forget_inside_sentence_is_not_reset():
     assert parse("don't forget that I like jazz").name == "chat"
+
+
+def test_remember_intent():
+    intent = parse("Remy, remember that the wifi password is hunter2")
+    assert intent.name == "memory.remember"
+    assert intent.slots["fact"] == "the wifi password is hunter2"
+
+
+def test_recall_intent():
+    intent = parse("what do you remember about my dentist")
+    assert intent.name == "memory.recall"
+    assert intent.slots["query"] == "my dentist"
+
+
+def test_status_intent():
+    assert parse("status report").name == "system.status"
+    assert parse("sitrep").name == "system.status"

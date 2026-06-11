@@ -19,7 +19,6 @@ from .audio.stt import Transcriber
 from .audio.tts import Speaker
 from .brain.claude import ClaudeBridge
 from .brain.episodic import Consolidator, EpisodicStore
-from .brain.memory import ConversationMemory
 from .brain.ollama import OllamaBrain
 from .config import Config
 from .events import EventBus, EventType, State
@@ -44,11 +43,12 @@ class Jarvis:
         self._restart_requested = False
         self._pending: Intent | None = None
 
-        self.memory = ConversationMemory()
         self.ollama = OllamaBrain(cfg.ollama)
         self.episodes = EpisodicStore(self.workspace.root / "memory")
         self.consolidator = Consolidator(self.episodes, self.ollama, self.workspace)
+        self._started_at = time.time()
         self._last_interaction = time.time()
+        self._context_floor = 0.0  # "forget that" raises this
         self._turn_replies: list[str] = []
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
@@ -167,8 +167,32 @@ class Jarvis:
             return
 
         if intent.name == "chat.reset":
-            self.memory.clear()
+            self._context_floor = time.time()
             await self._respond("Clean slate.")
+            return
+
+        if intent.name == "memory.remember":
+            await asyncio.to_thread(self.workspace.remember, intent.slots["fact"])
+            await self._respond("Remembered.")
+            return
+
+        if intent.name == "memory.recall":
+            query = intent.slots["query"]
+            facts = await asyncio.to_thread(self.workspace.memory_lines, query)
+            episodes = await asyncio.to_thread(self.episodes.search, query, 4)
+            if not facts and not episodes:
+                await self._respond(f"Nothing on file about {query}.")
+                return
+            context = "\n".join(facts + [ep.render() for ep in episodes])
+            self._set_state(State.THINKING)
+            await self._respond_stream(self.ollama.stream_sentences(
+                f"Notes:\n{context}\n\nUsing only these notes, answer briefly: "
+                f"what do you remember about {query}?",
+                system=self.workspace.persona_prompt(fast=True)))
+            return
+
+        if intent.name == "system.status":
+            await self._respond(await asyncio.to_thread(self._status_report))
             return
 
         if intent.name.startswith("spotify."):
@@ -207,19 +231,18 @@ class Jarvis:
             await self._respond(reply)
             return
 
-        # Default: local chat — conversation memory + episodic recall,
-        # streamed into TTS sentence-by-sentence
+        # Default: local chat — working memory + episodic recall, streamed
+        # into TTS sentence-by-sentence. One store, three views.
         self._set_state(State.THINKING)
-        prompt = self.memory.as_prompt(text)
+        prompt = await asyncio.to_thread(
+            self.episodes.as_prompt, text, None, self._context_floor)
         recalled = await asyncio.to_thread(self.episodes.search, text)
         if recalled:
             notes = "\n".join(ep.render() for ep in recalled)
             prompt = f"Possibly relevant past interactions:\n{notes}\n\n{prompt}"
-        full = await self._respond_stream(
+        await self._respond_stream(
             self.ollama.stream_sentences(
                 prompt, system=self.workspace.persona_prompt(fast=True)))
-        if full:
-            self.memory.add(text, full)
 
     async def _execute_agent_intent(self, intent: Intent) -> None:
         instruction = intent.slots["instruction"]
@@ -291,6 +314,31 @@ class Jarvis:
         if full:
             self._turn_replies.append(full)
         return full
+
+    def _status_report(self) -> str:
+        """Butler-style sitrep: uptime, skills, memory, resources."""
+        import shutil as _shutil
+
+        up_mins = int((time.time() - self._started_at) / 60)
+        uptime = f"{up_mins // 60}h {up_mins % 60}m" if up_mins >= 60 else f"{up_mins}m"
+        skills = len(self.skills.scan())
+        episodes = len(self.episodes.all())
+        memory_md = self.workspace.root / "MEMORY.md"
+        facts = sum(1 for ln in memory_md.read_text(encoding="utf-8").splitlines()
+                    if ln.strip().startswith("-")) if memory_md.is_file() else 0
+        disk_free_gb = _shutil.disk_usage(str(self.workspace.root)).free / 1e9
+        ram = ""
+        try:
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemAvailable"):
+                        ram = f" {int(line.split()[1]) / 1e6:.1f} gigs of RAM free,"
+                        break
+        except OSError:
+            pass
+        return (f"Up {uptime}. {skills} skills loaded, {episodes} episodes on file, "
+                f"{facts} long-term facts.{ram} {disk_free_gb:.0f} gigs of disk. "
+                f"All systems nominal.")
 
     @staticmethod
     def _summarize_for_voice(result: str) -> str:

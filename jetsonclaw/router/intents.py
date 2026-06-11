@@ -74,6 +74,17 @@ def parse(raw: str) -> Intent:
     if re.fullmatch(r"(forget (that|it|everything)|new (topic|conversation)|clean slate)", text):
         return Intent("chat.reset")
 
+    remember = re.match(r"^remember\s+(that\s+)?(?P<fact>.{3,})$", text)
+    if remember:
+        return Intent("memory.remember", {"fact": remember.group("fact").strip()})
+
+    recall = re.match(r"^(what|anything) do you (remember|know)\s+(about\s+)?(?P<q>.+)$", text)
+    if recall:
+        return Intent("memory.recall", {"query": recall.group("q").strip()})
+
+    if re.fullmatch(r"(status( report)?|system status|diagnostics|sitrep)", text):
+        return Intent("system.status")
+
     if _NOW_PLAYING.search(text):
         return Intent("spotify.now_playing")
     if re.search(r"\b(skip|next)\b", text):
