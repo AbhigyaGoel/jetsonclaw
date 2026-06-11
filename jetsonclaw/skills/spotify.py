@@ -120,6 +120,10 @@ class SpotifySkill:
         if intent.name == "spotify.resume":
             c.request("PUT", "/me/player/play")
             return "Resuming."
+        if intent.name == "spotify.volume_set":
+            return self._set_volume(int(intent.slots["percent"]))
+        if intent.name == "spotify.volume_delta":
+            return self._nudge_volume(int(intent.slots["delta"]))
         if intent.name == "spotify.now_playing":
             return self._now_playing()
         if intent.name == "spotify.play_track":
@@ -127,6 +131,19 @@ class SpotifySkill:
         if intent.name == "spotify.play_playlist":
             return self._play_playlist(intent.slots["name"])
         return "I don't know that Spotify command."
+
+    def _set_volume(self, percent: int) -> str:
+        percent = max(0, min(100, percent))
+        self._client.request("PUT", "/me/player/volume",
+                             params={"volume_percent": percent})
+        return f"Volume {percent}."
+
+    def _nudge_volume(self, delta: int) -> str:
+        state = self._client.request("GET", "/me/player")
+        current = (state.get("device") or {}).get("volume_percent")
+        if current is None:
+            return "No active device to adjust."
+        return self._set_volume(current + delta)
 
     def _now_playing(self) -> str:
         data = self._client.request("GET", "/me/player/currently-playing")

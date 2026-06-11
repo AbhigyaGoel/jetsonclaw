@@ -86,6 +86,14 @@ def parse(raw: str) -> Intent:
     if re.fullmatch(r"(status( report)?|system status|diagnostics|sitrep)", text):
         return Intent("system.status")
 
+    volume = re.search(r"\b(?:set\s+)?(?:the\s+)?volume\s+(?:to\s+)?(?P<n>\d{1,3})\b", text)
+    if volume:
+        return Intent("spotify.volume_set", {"percent": volume.group("n")})
+    if re.search(r"\b(volume up|louder|turn it up)\b", text):
+        return Intent("spotify.volume_delta", {"delta": "15"})
+    if re.search(r"\b(volume down|quieter|softer|turn it down)\b", text):
+        return Intent("spotify.volume_delta", {"delta": "-15"})
+
     if _NOW_PLAYING.search(text):
         return Intent("spotify.now_playing")
     if re.search(r"\b(skip|next)\b", text):
@@ -109,6 +117,10 @@ def parse(raw: str) -> Intent:
         return Intent("spotify.play_track", {"query": query})
     if text in ("play",):
         return Intent("spotify.resume")
+
+    if re.fullmatch(r"(take a brief|big request|let me explain( something)?|"
+                    r"i have a project( for you)?)", text):
+        return Intent("brief.start")
 
     if _AGENT_CONTINUE.match(text):
         return Intent("agent.continue", {"instruction": raw.strip()})

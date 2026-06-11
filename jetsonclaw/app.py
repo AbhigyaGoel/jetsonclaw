@@ -57,6 +57,7 @@ class Jarvis:
         self._active_until: float = 0.0
         self._turn_t0: float | None = None  # set per turn; cleared on first reply
         self._last_timing: dict[str, float] = {}
+        self._brief_pending = False  # next utterance is a long-form agent brief
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
@@ -209,6 +210,18 @@ class Jarvis:
             self._set_state(State.IDLE)
 
     async def _route(self, text: str) -> None:
+        # Brief mode: this utterance IS the project description, however long
+        # and rambling. Straight to the agent path, with confirmation.
+        if self._brief_pending:
+            self._brief_pending = False
+            intent = Intent("agent.task", {"instruction": text})
+            if self.cfg.claude.confirm_tasks:
+                self._pending = intent
+                await self._respond("Got all that. Say yes and I'll get to work.")
+                return
+            await self._execute_agent_intent(intent)
+            return
+
         # Confirmation gate for a queued agent task
         if self._pending is not None:
             pending, self._pending = self._pending, None
@@ -239,6 +252,14 @@ class Jarvis:
 
         if intent.name == "identity.self":
             await self._respond(self.cfg.identity.name)
+            return
+
+        if intent.name == "brief.start":
+            self._brief_pending = True
+            if self._capture is not None:
+                self._capture.extend_next(silence_secs=4.0, max_secs=180.0)
+            await self._respond("Go ahead. Wake me, then talk as long as you "
+                                "like; I'll wait for a four second pause.")
             return
 
         if intent.name == "chat.reset":
@@ -313,6 +334,20 @@ class Jarvis:
             await self._respond(reply)
             return
 
+        # Escalation lane: actionable request that nothing above could handle.
+        # The agent solves it by growing a skill, so next time the fast path
+        # has it. This is what makes arbitrary scenarios possible.
+        if self.cfg.claude.escalate and self.claude.available() \
+                and await self._is_actionable(text):
+            solve = Intent("agent.solve", {"instruction": text})
+            if self.cfg.claude.confirm_tasks:
+                self._pending = solve
+                await self._respond("Nothing I have handles that yet. "
+                                    "Say yes and I'll figure it out.")
+                return
+            await self._execute_agent_intent(solve)
+            return
+
         # Default: local chat — working memory + episodic recall + any
         # keyword-matched knowledge skills, streamed into TTS.
         self._set_state(State.THINKING)
@@ -332,8 +367,50 @@ class Jarvis:
         self._active_skill = skill_name
         self._active_until = time.time() + window_secs
 
+    def _resolve_project(self, instruction: str) -> str | None:
+        """[projects] config: if the instruction names a project, the agent
+        runs in that directory instead of the default workdir."""
+        lower = instruction.lower()
+        for name, path in self.cfg.projects.items():
+            if name in lower:
+                return path
+        return None
+
+    async def _is_actionable(self, text: str) -> bool:
+        """Tiny local-LLM triage: action request vs question/chat."""
+        reply = await self.chat.chat(
+            f'Utterance: "{text}"\n'
+            "Is the speaker asking for an action to be performed or set up "
+            "(control a device or service, build something, fetch and process "
+            "data, organize files)? Not a question, not small talk. "
+            "Answer only yes or no.")
+        return reply.strip().lower().startswith("y")
+
     async def _execute_agent_intent(self, intent: Intent) -> None:
         instruction = intent.slots["instruction"]
+        if intent.name == "agent.solve":
+            # Solve-then-absorb: the agent grows a skill for this request,
+            # the harness activates it, then we re-run the utterance live.
+            await self._respond("On it.")
+            self._set_state(State.WORKING, detail=instruction)
+            result = await self.self_iterate.iterate(
+                f'The owner asked: "{instruction}". Nothing currently handles '
+                f"this. Solve it by creating a workspace skill (strongly "
+                f"preferred) so it works now and every time after. Spotify "
+                f"OAuth tokens, if relevant, are at "
+                f"{self.cfg.spotify.token_file}. Make the skill triggers "
+                f"match natural phrasings of the request.")
+            skill = await asyncio.to_thread(self.skills.find, instruction)
+            if result.ok and skill is not None:
+                reply = await asyncio.to_thread(skill.run, instruction)
+                self.bus.publish(EventType.SKILL, skill=skill.name, intent="absorbed")
+                self._mark_active(skill.name)
+                await self._respond(reply)
+                return
+            await self._respond(result.message)
+            self._restart_requested = result.restart
+            return
+
         if intent.name == "self.iterate":
             await self._respond("On it. Give me a few minutes.")
             self._set_state(State.WORKING, detail=instruction)
@@ -343,12 +420,20 @@ class Jarvis:
             return
 
         resuming = intent.name == "agent.continue"
+        workdir = self._resolve_project(instruction)
         await self._respond("Picking it back up." if resuming else "Working on it.")
         self._set_state(State.WORKING, detail=instruction)
         self.bus.publish(EventType.AGENT_START, task=instruction, kind="task")
+        preview = self.workspace.root / "preview"
+        brief = (f"{self.workspace.persona_prompt()}\n\n"
+                 f"For anything visual the owner should review (mockups, pages, "
+                 f"variants), write standalone files under {preview}/<task-name>/ "
+                 f"and end by telling the owner the path, like: open /preview/"
+                 f"<task-name>/ on the dashboard. Number variants so they can "
+                 f"be chosen by voice.")
         result_text = ""
-        async for line in self.claude.run(instruction,
-                                          system_append=self.workspace.persona_prompt(),
+        async for line in self.claude.run(instruction, workdir=workdir,
+                                          system_append=brief,
                                           continue_session=resuming):
             self.bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
             if line.kind in ("result", "error"):

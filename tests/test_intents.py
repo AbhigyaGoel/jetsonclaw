@@ -115,3 +115,16 @@ def test_agent_continue():
     intent = parse("keep going with the website changes")
     assert intent.name == "agent.continue"
     assert parse("continue").name == "agent.continue"
+
+
+def test_volume_intents():
+    assert parse("set the volume to 40").slots["percent"] == "40"
+    assert parse("volume 75").name == "spotify.volume_set"
+    assert parse("turn it up").name == "spotify.volume_delta"
+    assert parse("quieter please").slots["delta"] == "-15"
+
+
+def test_brief_start():
+    assert parse("take a brief").name == "brief.start"
+    assert parse("let me explain something").name == "brief.start"
+    assert parse("i have a project for you").name == "brief.start"

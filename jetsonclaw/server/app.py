@@ -16,6 +16,7 @@ from typing import Awaitable, Callable
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 
 from ..config import ServerConfig
 from ..events import EventBus
@@ -48,6 +49,13 @@ def create_app(bus: EventBus, cfg: ServerConfig,
     @app.get("/icon.svg")
     async def icon() -> FileResponse:
         return FileResponse(STATIC_DIR / "icon.svg")
+
+    # Agent-produced artifacts (mockups, page variants) reviewable from any
+    # device on the LAN. Agents are told to write here and announce the path.
+    preview_dir = Path.home() / ".jetsonclaw" / "preview"
+    preview_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/preview", StaticFiles(directory=str(preview_dir), html=True),
+              name="preview")
 
     @app.websocket("/ws")
     async def ws(socket: WebSocket) -> None:

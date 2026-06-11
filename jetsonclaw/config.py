@@ -90,6 +90,9 @@ class ClaudeConfig:
     confirm_tasks: bool = True  # "say yes" gate before agent tasks run
     mcp_config: str = ""  # path to an MCP servers json; agent sessions inherit it
     heartbeat_hours: float = 0  # >0: run ~/.jetsonclaw/HEARTBEAT.md as an agent task on this cadence
+    # actionable requests nothing else handles escalate to the agent, which
+    # solves them by growing a skill (set false for chat-only fallback)
+    escalate: bool = True
 
 
 @dataclass(frozen=True)
@@ -107,6 +110,8 @@ class ServerConfig:
 @dataclass(frozen=True)
 class Config:
     identity: IdentityConfig = field(default_factory=IdentityConfig)
+    # [projects] name = "path" — "edit my portfolio ..." runs the agent there
+    projects: dict = field(default_factory=dict)
     audio: AudioConfig = field(default_factory=AudioConfig)
     wake: WakeConfig = field(default_factory=WakeConfig)
     stt: SttConfig = field(default_factory=SttConfig)
@@ -144,6 +149,8 @@ def load_config(path: str | Path | None = None) -> Config:
     if "chat" not in raw and "ollama" in raw:
         raw["chat"] = raw["ollama"]  # pre-rename configs keep working
 
+    projects = {str(k).lower(): str(v) for k, v in (raw.get("projects") or {}).items()}
+
     kwargs = {}
     for name, cls in _SECTIONS.items():
         section = raw.get(name, {})
@@ -159,4 +166,4 @@ def load_config(path: str | Path | None = None) -> Config:
             .replace("{name}", identity.name)
             .replace("{owner}", identity.owner),
     })
-    return Config(**kwargs)
+    return Config(projects=projects, **kwargs)

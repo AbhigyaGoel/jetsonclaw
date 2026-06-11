@@ -33,6 +33,7 @@ class CaptureLoop:
         self._paused = threading.Event()
         self._thread: threading.Thread | None = None
         self._level_decimate = 0
+        self._next_override: tuple[float, float] | None = None  # (silence_secs, max_secs)
 
     def start(self) -> None:
         self._mic.open()
@@ -42,6 +43,11 @@ class CaptureLoop:
     def stop(self) -> None:
         self._stop.set()
         self._mic.close()
+
+    def extend_next(self, silence_secs: float, max_secs: float) -> None:
+        """One-shot override for the next recording — brief mode: the owner
+        wants to talk at length, so wait for a long pause before cutting off."""
+        self._next_override = (silence_secs, max_secs)
 
     def pause(self) -> None:
         """Ignore the mic while JARVIS is speaking (avoid self-triggering)."""
@@ -79,11 +85,15 @@ class CaptureLoop:
                     self._bus.publish_threadsafe(EventType.ERROR, message="too short, ignored")
 
     def _record_utterance(self) -> np.ndarray:
+        silence_secs, max_secs = self._cfg.silence_secs, self._cfg.max_record_secs
+        if self._next_override is not None:
+            silence_secs, max_secs = self._next_override
+            self._next_override = None
         frames: list[np.ndarray] = []
         silent = 0
-        chunks_for_silence = int(self._cfg.silence_secs * self._cfg.sample_rate
+        chunks_for_silence = int(silence_secs * self._cfg.sample_rate
                                  / self._cfg.chunk_samples)
-        max_chunks = int(self._cfg.max_record_secs * self._cfg.sample_rate
+        max_chunks = int(max_secs * self._cfg.sample_rate
                          / self._cfg.chunk_samples)
 
         for _ in range(max_chunks):
