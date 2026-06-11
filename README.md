@@ -1,140 +1,112 @@
 # JetsonClaw
 
-**JARVIS on a Jetson.** A voice-activated AI assistant that runs on a $249
-Jetson Orin Nano, talks back like a butler, controls your Spotify — and
-**rewrites its own code when you ask it to.**
+[![CI](https://github.com/AbhigyaGoel/jetsonclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhigyaGoel/jetsonclaw/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![Platform](https://img.shields.io/badge/platform-Jetson%20Orin%20%7C%20arm64-76b900)
 
-> *"Hey Jarvis — give yourself a weather skill."*
-> *(two minutes later, after editing its own repo, testing itself, and restarting)*
-> *"Done and tested, sir."*
+**JetsonClaw** is a voice assistant that runs on a Jetson Orin Nano and can rewrite its own code. Wake word, speech to text, and chat run fully on device. Anything that needs real work spawns a headless [Claude Code](https://code.claude.com) session billed to your existing Claude subscription, not an API key.
+
+```
+» "give yourself a skill to flip a coin"
+« "That'll modify my own code. Say yes to proceed."
+» "yes"
+« "On it. Give me a few minutes."
+    agent: Creating a coin flip skill at ~/.jetsonclaw/skills/coinflip/
+« "Done. Say 'flip a coin' and I'll respond with Heads or Tails."
+» "flip a coin"
+« "HEADS!"
+```
+
+Real session, unedited. The skill existed before the sentence finished.
 
 ## How it works
 
 ```
-mic ─ openWakeWord ─ faster-whisper ─┬─ intent router ──┬─ skills (Spotify, …)      fast, local, <1s
-                                     │                  ├─ qwen2.5 via ollama        chat, local
-                                     │                  └─ Claude Code (headless)    agent tasks
-                                     ▼
-                          EventBus ──┬── Textual TUI (on-device)
-                                     └── web dashboard PWA (any phone/PC on LAN)
-            Piper TTS ◄── responses
+mic > openWakeWord > faster-whisper >  intent router >  skills (Spotify, self-grown)   local, <1s
+                                                     >  qwen2.5 via ollama             local chat
+                                                     >  Claude Code headless           agent tasks
+                                       EventBus      >  TUI / web dashboard / logs
+responses > Piper TTS (streamed sentence by sentence)
 ```
 
-Two brains, deliberately:
+Two brains on purpose. Quick commands never leave the room. Code changes and integrations go to a real agent.
 
-- **Local fast path** — wake word, speech-to-text, intent matching, Spotify, and
-  chat all run on-device. Quick commands never leave the room.
-- **Agentic path** — anything that needs real work ("edit my portfolio site…",
-  "upgrade yourself…") spawns a headless [Claude Code](https://code.claude.com)
-  session, authenticated with your existing Claude subscription via
-  `claude setup-token`. **No per-token API billing.**
-
-## Self-iteration (the fun part)
-
-When you say *"Jarvis, upgrade yourself to …"*:
-
-1. snapshot the current git HEAD
-2. a Claude Code session edits JetsonClaw's own repo
-3. the change must pass `python3 -m jetsonclaw --selftest` (imports every
-   module + runs the test suite) — failures are discarded automatically
-4. passing changes are committed, the previous commit is recorded as
-   **last-known-good**, and JARVIS restarts itself with the new code
-5. *"Jarvis, undo that"* reverts the last self-made commit
-6. if a change somehow crashes the assistant at boot, a crash-loop guard
-   auto-reverts to last-known-good after 3 failed starts
-
-## Hardware
-
-- NVIDIA Jetson Orin Nano (8GB) — JetPack r36 / Ubuntu 22.04
-- any USB mic (tested: Logitech C270 webcam mic)
-- any speaker (HDMI monitor audio or USB)
-
-## Install
+## Quick start
 
 ```bash
-# on the Jetson
+# on the Jetson (or any arm64 Linux with a mic)
 git clone https://github.com/AbhigyaGoel/jetsonclaw ~/jetsonclaw
 cd ~/jetsonclaw && bash scripts/install.sh
 
-# ollama (local chat brain)
+# local chat model
 curl -fsSL https://ollama.com/install.sh | sh && ollama pull qwen2.5:3b
 
-# Claude auth: on any machine with a browser
-claude setup-token        # then on the Jetson:
-echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env   # for the systemd service
-echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.bashrc    # for terminal runs
+# agent brain auth: run on any machine with a browser, paste token to the Jetson
+claude setup-token
+echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env
+
+# check everything, then run
+~/.jetsonclaw/venv/bin/python -m jetsonclaw --doctor
+~/.jetsonclaw/venv/bin/python -m jetsonclaw
 ```
 
-Run it:
+Dashboard at `http://<jetson-ip>:8484`. Install it as a PWA on your phone: it has a mic button, so your phone is a remote.
 
-```bash
-~/.jetsonclaw/venv/bin/python -m jetsonclaw            # TUI
-~/.jetsonclaw/venv/bin/python -m jetsonclaw --headless # console / systemd
-```
+## What it does
 
-Dashboard: `http://<jetson-ip>:8484` — add to home screen on your phone, it's a PWA.
-
-## Voice commands
-
-| say | happens |
+| Say | Result |
 |---|---|
-| "hey jarvis, play blinding lights" | searches Spotify, plays it |
-| "play my gym playlist" | fuzzy-matches your playlists |
-| "skip" / "pause" / "what's playing" | playback control |
-| "what time is it" | a **self-grown skill** (see below) |
-| "upgrade yourself to ..." | self-iteration (see above) |
+| "play blinding lights" | Spotify search and play |
+| "play my gym playlist" | fuzzy playlist match |
+| "what time is it" | a self-grown skill answers |
+| "remember that my locker code is 4912" | written to long-term memory |
+| "what do you remember about my locker" | recalled from memory |
+| "give yourself a weather skill" | writes, tests, and hot-loads a new skill |
+| "upgrade yourself to ..." | edits its own repo, gated by tests |
 | "undo that" | reverts the last self-change |
-| "edit the portfolio site to ..." | agent task in your configured workdir |
-| "forget that" / "new topic" | clears conversation memory |
-| anything else | local LLM chat — with conversation memory, streamed into TTS sentence-by-sentence |
+| "status report" | uptime, skills, memory, RAM, disk |
+| anything else | local chat with conversation memory |
 
-Agent tasks ask for a spoken **"yes"** before running (configurable), and the
-agent runs **without shell access by default** — a misheard command can edit
-files in its workdir but never execute arbitrary bash.
+Typed input works everywhere (TUI, dashboard, stdin) and runs the same pipeline as voice.
 
-No mic handy? Every surface accepts typed commands through the *same*
-pipeline: the TUI input box, the dashboard input, or plain stdin in
-`--headless` mode (`echo "what time is it" | python -m jetsonclaw --headless`).
+## Self-modification, safely
 
-## Self-grown skills
+1. Every change runs in a fresh Claude Code session inside the repo
+2. The change must pass `python3 -m jetsonclaw --selftest` or it is discarded
+3. Passing changes are committed; the previous commit is recorded as last known good
+4. A crash loop at boot auto-reverts to last known good after 3 failed starts
+5. The agent has no shell access by default and asks for a spoken yes before running
 
-Skills are directories under `~/.jetsonclaw/skills/` with a `SKILL.md`:
+Skills are simpler: a `SKILL.md` plus optional `handler.py` under `~/.jetsonclaw/skills/`, hot-loaded on the next utterance with no restart. Declared pip dependencies are installed by the harness, and a failing selftest quarantines the skill. See [docs/skills.md](docs/skills.md).
 
-```markdown
----
-name: weather
-description: current weather
-triggers: ["weather", "is it raining"]
-action:
-  command: curl -s "wttr.in/?format=%C+%t"
-requires:
-  bins: [curl]
----
-```
+## Memory
 
-They **hot-load on the next utterance** — no restart, no redeploy. Which means
-when you say *"Jarvis, give yourself a weather skill"*, the agent writes one of
-these files and the capability exists by the time it finishes talking. Skills
-are plain files: share them, version them, copy them between machines.
+One episodic store, three views: the last few turns feed chat context, keyword search recalls older interactions, and an idle-time consolidation pass summarizes each day and folds durable facts into `MEMORY.md`. Personality lives in `~/.jetsonclaw/SOUL.md` and is plain markdown the agent itself can edit.
 
-## Personality is data, not code
+## Hardware
 
-`~/.jetsonclaw/` holds `SOUL.md` (persona), `USER.md` (you), `MEMORY.md`
-(long-term facts) — injected into every brain call, editable by you *or by
-JARVIS itself*. "Jarvis, be 20% more sarcastic" is a file edit, not a PR.
+- NVIDIA Jetson Orin Nano (8GB), JetPack r36, Ubuntu 22.04
+- any USB mic (tested with a Logitech C270 webcam)
+- any speaker (HDMI or USB)
 
-## Hard-won Jetson lessons baked in
+Other arm64 or x86 Linux boards should work; the Jetson is what it is tuned and tested on.
 
-- openWakeWord scores ~0 on float32 audio — must be **int16** (this cost a day)
-- PyAudio device indices are unstable on Jetson — mic capture is `arecord` only
-- numpy must stay **<2** (tflite-runtime segfaults on 2.x)
-- pip ctranslate2 has no CUDA on aarch64 — Whisper runs CPU int8, still real-time
+## Configuration
 
-## Subscription budget note
+Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. Assistant name, wake word model, voices, models, ports, and agent permissions are all config.
 
-Headless `claude -p` usage draws from your plan's Agent SDK credit
-(Max 5x ≈ $100/mo equivalent as of June 2026). Fast-path commands never touch
-it — only agent tasks and self-iteration do.
+## Docs
+
+| Doc | Covers |
+|---|---|
+| [docs/skills.md](docs/skills.md) | skill format, synthesis, activation, quarantine |
+| [docs/wake-word.md](docs/wake-word.md) | training a custom wake word |
+| [docs/jetson.md](docs/jetson.md) | Jetson-specific setup notes and pitfalls |
+
+## Cost
+
+Wake word, STT, TTS, chat, Spotify, and skills run locally and cost nothing. Agent tasks draw from the Agent SDK credit included in Claude subscriptions (about $100/month equivalent on Max 5x as of mid 2026).
 
 ## License
 
