@@ -30,6 +30,31 @@ Free-form notes for humans and agents.
 | `requires.env` | env vars that must be set or the skill is hidden |
 | `requires.pip` | pip packages the harness installs on activation |
 | `watch.interval_secs` | run on a schedule; see watchers below |
+| `inject` | keywords that push the markdown body into chat context |
+
+## Knowledge skills
+
+A SKILL.md with `inject` keywords and no action is pure knowledge. When an
+utterance contains a keyword, the body is injected into the chat system
+prompt for that turn:
+
+```markdown
+---
+name: house
+description: facts about the house
+inject: [thermostat, heating, boiler]
+---
+The thermostat is in the hallway. Never set it above 23C.
+The boiler reset switch is behind the left panel.
+```
+
+## Follow-ups
+
+Script skills may define `converse(text) -> str | None`. After a skill
+handles an utterance, it gets first refusal on the next one for two minutes.
+Return a string to answer, or None to decline and let normal routing run.
+This is what makes multi-turn skills (quizzes, step-by-step flows) work
+without any LLM routing.
 
 ## Watchers
 

@@ -134,11 +134,25 @@ class SelfIterateSkill:
             self._journal(instruction, summary, "workspace")
             return IterationResult(True, summary + activation_note)
 
+        # Repair before rollback: one bounded fix attempt with the failure
+        # output fed back to the same session. Reverting is the last resort.
         ok, test_output = await asyncio.to_thread(self._smoke_test)
+        if not ok:
+            self._bus.publish(EventType.AGENT_OUTPUT, kind="error",
+                              text=f"selftest failed, attempting repair: {test_output[-200:]}")
+            repair_prompt = (f"Your change failed the selftest. Output:\n"
+                             f"{test_output[-4000:]}\n\nFix the failure. "
+                             f"Do not weaken or delete tests to make them pass.")
+            async for line in self._bridge.run(repair_prompt, workdir=self._repo,
+                                               continue_session=True):
+                self._bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
+            ok, test_output = await asyncio.to_thread(self._smoke_test)
+
         if not ok:
             await self._discard(before)
             self._bus.publish(EventType.AGENT_DONE, ok=False, detail=test_output[-800:])
-            return IterationResult(False, "The change failed my self-test, so I threw it away.")
+            return IterationResult(
+                False, "The change failed my self-test twice, so I threw it away.")
 
         await asyncio.to_thread(self._commit, instruction)
         self._guard.record_good(before)  # the commit we can fall back to

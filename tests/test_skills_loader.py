@@ -192,3 +192,59 @@ def test_missing_env_hides_skill(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("TOTALLY_UNSET_VAR_X", "value")
     loader2 = SkillLoader(tmp_path)
     assert loader2.find("secret thing") is not None
+
+
+def test_inject_only_knowledge_skill(tmp_path: Path):
+    d = tmp_path / "lore"
+    d.mkdir()
+    (d / "SKILL.md").write_text(textwrap.dedent("""\
+        ---
+        name: lore
+        description: house facts
+        inject: [thermostat, heating]
+        ---
+        The thermostat is in the hallway. Never set it above 23C.
+        """), encoding="utf-8")
+    loader = SkillLoader(tmp_path)
+    assert loader.find("thermostat") is None  # no action, not routable
+    assert "hallway" in loader.knowledge_for("what's up with the thermostat")
+    assert loader.knowledge_for("play some jazz") == ""
+
+
+def test_converse_followup(tmp_path: Path):
+    d = tmp_path / "quiz"
+    d.mkdir()
+    (d / "SKILL.md").write_text(textwrap.dedent("""\
+        ---
+        name: quiz
+        description: a quiz game
+        triggers: [start a quiz]
+        action: {script: handler.py}
+        ---
+        """), encoding="utf-8")
+    (d / "handler.py").write_text(textwrap.dedent("""\
+        def handle(text):
+            return "Question one: what is 2 plus 2?"
+
+        def converse(text):
+            if "4" in text or "four" in text.lower():
+                return "Correct."
+            if "stop" in text.lower():
+                return None
+            return "Nope, try again."
+        """))
+    skill = SkillLoader(tmp_path).by_name("quiz")
+    assert skill.converse("it's four") == "Correct."
+    assert skill.converse("stop the quiz") is None  # declines, falls through
+
+
+def test_converse_absent_returns_none(tmp_path: Path):
+    write_skill(tmp_path, "plain", """\
+        ---
+        name: plain
+        description: command skill
+        triggers: [plain thing]
+        action: {command: echo hi}
+        ---
+        """)
+    assert SkillLoader(tmp_path).by_name("plain").converse("anything") is None

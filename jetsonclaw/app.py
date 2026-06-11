@@ -53,6 +53,8 @@ class Jarvis:
         self._route_lock = asyncio.Lock()  # one utterance through the pipeline at a time
         self._watch_due: dict[str, float] = {}
         self._watch_seen: dict[str, str] = {}
+        self._active_skill: str = ""  # last dynamic skill to handle an utterance
+        self._active_until: float = 0.0
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
@@ -213,6 +215,17 @@ class Jarvis:
                 return
             # anything else falls through as a fresh command
 
+        # Follow-up window: the skill that just handled an utterance gets
+        # first refusal on the next one (script skills via converse()).
+        if self._active_skill and time.time() < self._active_until:
+            skill = await asyncio.to_thread(self.skills.by_name, self._active_skill)
+            if skill is not None:
+                reply = await asyncio.to_thread(skill.converse, text)
+                if reply is not None:
+                    self._mark_active(skill.name)
+                    await self._respond(reply)
+                    return
+
         intent = parse(text)
 
         if intent.name == "identity.name":
@@ -290,11 +303,12 @@ class Jarvis:
             self._set_state(State.THINKING, detail=skill.name)
             reply = await asyncio.to_thread(skill.run, text)
             self.bus.publish(EventType.SKILL, skill=skill.name, intent="dynamic")
+            self._mark_active(skill.name)
             await self._respond(reply)
             return
 
-        # Default: local chat — working memory + episodic recall, streamed
-        # into TTS sentence-by-sentence. One store, three views.
+        # Default: local chat — working memory + episodic recall + any
+        # keyword-matched knowledge skills, streamed into TTS.
         self._set_state(State.THINKING)
         prompt = await asyncio.to_thread(
             self.episodes.as_prompt, text, None, self._context_floor)
@@ -302,9 +316,15 @@ class Jarvis:
         if recalled:
             notes = "\n".join(ep.render() for ep in recalled)
             prompt = f"Possibly relevant past interactions:\n{notes}\n\n{prompt}"
-        await self._respond_stream(
-            self.chat.stream_sentences(
-                prompt, system=self.workspace.persona_prompt(fast=True)))
+        system = self.workspace.persona_prompt(fast=True)
+        knowledge = await asyncio.to_thread(self.skills.knowledge_for, text)
+        if knowledge:
+            system = f"{system}\n\nRelevant notes:\n{knowledge}"
+        await self._respond_stream(self.chat.stream_sentences(prompt, system=system))
+
+    def _mark_active(self, skill_name: str, window_secs: float = 120.0) -> None:
+        self._active_skill = skill_name
+        self._active_until = time.time() + window_secs
 
     async def _execute_agent_intent(self, intent: Intent) -> None:
         instruction = intent.slots["instruction"]

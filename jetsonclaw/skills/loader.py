@@ -52,13 +52,38 @@ class DynamicSkill:
     missing_bins: tuple[str, ...] = field(default=())
     missing_env: tuple[str, ...] = field(default=())
     watch_interval: float | None = None  # run on a schedule; speak on changed output
+    inject_keywords: tuple[str, ...] = ()  # push body into chat context on match
+    body: str = ""  # markdown after the frontmatter
 
     def available(self) -> bool:
         return not self.missing_bins and not self.missing_env \
-            and (self.command or self.script)
+            and (self.command or self.script or self.inject_keywords)
 
     def matches(self, text: str) -> bool:
         return any(t.search(text) for t in self.triggers)
+
+    def matches_inject(self, text: str) -> bool:
+        lower = text.lower()
+        return any(k in lower for k in self.inject_keywords)
+
+    def converse(self, text: str) -> str | None:
+        """Follow-up hook: script skills may define converse(text) -> str|None
+        to claim the next utterance after they handle one (OVOS-style)."""
+        if not self.script:
+            return None
+        path = self.directory / self.script
+        spec = importlib.util.spec_from_file_location(
+            f"jetsonclaw_skill_{self.name}", path)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+            handler = getattr(module, "converse", None)
+            if handler is None:
+                return None
+            result = handler(text)
+            return str(result) if result is not None else None
+        except Exception:
+            return None  # a broken converse never blocks normal routing
 
     def run(self, text: str) -> str:
         if self.command:
@@ -98,10 +123,12 @@ class DynamicSkill:
 def parse_skill(path: Path) -> DynamicSkill | None:
     """Parse one SKILL.md. Returns None for files that aren't valid skills."""
     try:
-        match = _FRONTMATTER.match(path.read_text(encoding="utf-8", errors="replace"))
+        text = path.read_text(encoding="utf-8", errors="replace")
+        match = _FRONTMATTER.match(text)
         if not match:
             return None
         meta = yaml.safe_load(match.group(1)) or {}
+        body = text[match.end():].strip()
     except (OSError, yaml.YAMLError):
         return None
 
@@ -126,8 +153,12 @@ def parse_skill(path: Path) -> DynamicSkill | None:
         except (TypeError, ValueError):
             pass
 
-    # a skill needs at least one way to fire: a trigger phrase or a schedule
-    if not triggers and watch_interval is None:
+    raw_inject = meta.get("inject") or []
+    inject_keywords = tuple(str(k).lower() for k in raw_inject) \
+        if isinstance(raw_inject, list) else ()
+
+    # a skill needs at least one way to fire: a phrase, a schedule, or injection
+    if not triggers and watch_interval is None and not inject_keywords:
         return None
 
     action = meta.get("action") or {}
@@ -147,6 +178,8 @@ def parse_skill(path: Path) -> DynamicSkill | None:
         missing_bins=missing,
         missing_env=missing_env,
         watch_interval=watch_interval,
+        inject_keywords=inject_keywords,
+        body=body,
     )
 
 
@@ -179,6 +212,15 @@ class SkillLoader:
 
     def watchers(self) -> list[DynamicSkill]:
         return [s for s in self.scan() if s.watch_interval is not None]
+
+    def knowledge_for(self, text: str, cap: int = 2000) -> str:
+        """Bodies of inject-matching skills, pushed into chat context."""
+        parts = [s.body[:cap] for s in self.scan()
+                 if s.inject_keywords and s.matches_inject(text) and s.body]
+        return "\n\n".join(parts)
+
+    def by_name(self, name: str) -> DynamicSkill | None:
+        return next((s for s in self.scan() if s.name == name), None)
 
     def catalog(self) -> str:
         """One line per skill — injected into agent briefs so JARVIS knows
