@@ -112,7 +112,7 @@ Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. 
 
 | Doc | Covers |
 |---|---|
-| [docs/architecture.md](docs/architecture.md) | every module, every workflow, and a prune guide |
+| [docs/features.md](docs/features.md) | everything REMY does, and how to remove what you don't want |
 | [docs/skills.md](docs/skills.md) | skill format, synthesis, activation, quarantine |
 | [docs/wake-word.md](docs/wake-word.md) | training a custom wake word |
 | [docs/jetson.md](docs/jetson.md) | Jetson-specific setup notes and pitfalls |
