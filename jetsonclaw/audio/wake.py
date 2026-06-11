@@ -19,8 +19,14 @@ class WakeDetector:
     def __init__(self, model: str, framework: str, threshold: float) -> None:
         from openwakeword.model import Model as WakeModel  # heavy import, defer
 
-        model = str(Path(model).expanduser())
-        self._model_name = Path(model).stem  # prediction_buffer key
+        path = Path(model).expanduser()
+        if path.suffix in (".tflite", ".onnx"):
+            model = str(path)
+            self._model_name = path.stem  # custom files key by filename stem
+        else:
+            # bundled names ("hey_jarvis_v0.1") key as-is; Path.stem would
+            # eat the ".1" and silently read an empty prediction buffer
+            self._model_name = model
         self._threshold = threshold
         self._model = WakeModel(wakeword_models=[model], inference_framework=framework)
 
