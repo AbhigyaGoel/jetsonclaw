@@ -28,6 +28,9 @@ class SpotifyClient:
     def __init__(self, token_file: str) -> None:
         self._token_file = Path(token_file).expanduser()
 
+    def configured(self) -> bool:
+        return self._token_file.is_file()
+
     # --- token handling ---
 
     def _load_tokens(self) -> dict:
@@ -98,7 +101,7 @@ class SpotifySkill:
         self._client = SpotifyClient(cfg.token_file)
 
     def configured(self) -> bool:
-        return Path(self._client._token_file).expanduser().is_file()
+        return self._client.configured()
 
     async def handle(self, intent: Intent) -> str:
         try:

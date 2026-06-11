@@ -37,6 +37,9 @@ COMMAND_TIMEOUT_SECS = 30
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*(\n|\Z)", re.DOTALL)
 
 
+MIN_WATCH_INTERVAL_SECS = 60
+
+
 @dataclass(frozen=True)
 class DynamicSkill:
     name: str
@@ -46,6 +49,7 @@ class DynamicSkill:
     command: str | None = None
     script: str | None = None
     missing_bins: tuple[str, ...] = field(default=())
+    watch_interval: float | None = None  # run on a schedule; speak on changed output
 
     def available(self) -> bool:
         return not self.missing_bins and (self.command or self.script)
@@ -100,7 +104,8 @@ def parse_skill(path: Path) -> DynamicSkill | None:
 
     name = str(meta.get("name", "")).strip()
     raw_triggers = meta.get("triggers") or []
-    if not name or not isinstance(raw_triggers, list) or not raw_triggers:
+    raw_watch = meta.get("watch")
+    if not name or not isinstance(raw_triggers, list):
         return None
 
     triggers = []
@@ -109,7 +114,17 @@ def parse_skill(path: Path) -> DynamicSkill | None:
             triggers.append(re.compile(str(raw), re.IGNORECASE))
         except re.error:
             continue
-    if not triggers:
+
+    watch_interval = None
+    if raw_watch is not None:
+        raw_secs = raw_watch.get("interval_secs") if isinstance(raw_watch, dict) else raw_watch
+        try:
+            watch_interval = max(float(raw_secs), MIN_WATCH_INTERVAL_SECS)
+        except (TypeError, ValueError):
+            pass
+
+    # a skill needs at least one way to fire: a trigger phrase or a schedule
+    if not triggers and watch_interval is None:
         return None
 
     action = meta.get("action") or {}
@@ -125,6 +140,7 @@ def parse_skill(path: Path) -> DynamicSkill | None:
         command=action.get("command"),
         script=action.get("script"),
         missing_bins=missing,
+        watch_interval=watch_interval,
     )
 
 
@@ -154,6 +170,9 @@ class SkillLoader:
 
     def find(self, text: str) -> DynamicSkill | None:
         return next((s for s in self.scan() if s.matches(text)), None)
+
+    def watchers(self) -> list[DynamicSkill]:
+        return [s for s in self.scan() if s.watch_interval is not None]
 
     def catalog(self) -> str:
         """One line per skill — injected into agent briefs so JARVIS knows

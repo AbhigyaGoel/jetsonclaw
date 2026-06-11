@@ -71,6 +71,7 @@ class CaptureLoop:
             score = self._wake.detect(chunk)
             if score is not None:
                 self._bus.publish_threadsafe(EventType.WAKE, score=score)
+                self._bus.publish_threadsafe(EventType.STATE, state="listening", detail="")
                 audio = self._record_utterance()
                 if audio.size > self._cfg.sample_rate * 0.3:
                     self._on_utterance(audio)

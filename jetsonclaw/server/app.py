@@ -45,6 +45,10 @@ def create_app(bus: EventBus, cfg: ServerConfig,
     async def manifest() -> FileResponse:
         return FileResponse(STATIC_DIR / "manifest.json")
 
+    @app.get("/icon.svg")
+    async def icon() -> FileResponse:
+        return FileResponse(STATIC_DIR / "icon.svg")
+
     @app.websocket("/ws")
     async def ws(socket: WebSocket) -> None:
         if not authorized(socket.query_params.get("key")):

@@ -30,10 +30,18 @@ def split_complete_sentences(buffer: str) -> tuple[list[str], str]:
     return [p.strip() for p in parts[:-1] if p.strip()], parts[-1]
 
 
+_CACHE_MAX = 128
+
+
 class OllamaBrain:
     def __init__(self, cfg: OllamaConfig) -> None:
         self._cfg = cfg
         self._cache: dict[str, str] = {}
+
+    def _cache_put(self, key: str, value: str) -> None:
+        if len(self._cache) >= _CACHE_MAX:
+            self._cache.pop(next(iter(self._cache)))
+        self._cache[key] = value
 
     async def chat(self, text: str, system: str = "") -> str:
         """Non-streaming completion (kept for cached/simple paths)."""
@@ -41,10 +49,10 @@ class OllamaBrain:
         if key in self._cache:
             return self._cache[key]
         try:
-            response = await asyncio.to_thread(self._request, text, system, False)
+            response = await asyncio.to_thread(self._request, text, system)
         except Exception as e:
             return f"My local brain is offline: {e}"
-        self._cache[key] = response
+        self._cache_put(key, response)
         return response
 
     async def stream_sentences(self, text: str, system: str = "") -> AsyncIterator[str]:
@@ -71,7 +79,7 @@ class OllamaBrain:
                     full.append(buffer.strip())
                     loop.call_soon_threadsafe(queue.put_nowait, buffer.strip())
                 if full:
-                    self._cache[key] = " ".join(full)
+                    self._cache_put(key, " ".join(full))
             except Exception as e:
                 loop.call_soon_threadsafe(
                     queue.put_nowait, f"My local brain is offline: {e}")
@@ -120,7 +128,7 @@ class OllamaBrain:
                     raise
                 time.sleep(2)
 
-    def _request(self, text: str, system: str, stream: bool) -> str:
+    def _request(self, text: str, system: str) -> str:
         with self._open(self._payload(text, system, False)) as resp:
             result = json.loads(resp.read().decode())
         return result.get("response", "").strip()

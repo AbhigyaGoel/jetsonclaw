@@ -122,3 +122,55 @@ def test_catalog_lists_skills(tmp_path: Path):
         ---
         """)
     assert "greet: say hi" in SkillLoader(tmp_path).catalog()
+
+
+def test_watch_skill_parses_interval(tmp_path: Path):
+    write_skill(tmp_path, "ci", """\
+        ---
+        name: ci
+        description: watch ci
+        watch:
+          interval_secs: 300
+        action: {command: echo ok}
+        ---
+        """)
+    watchers = SkillLoader(tmp_path).watchers()
+    assert len(watchers) == 1
+    assert watchers[0].watch_interval == 300.0
+
+
+def test_watch_interval_floor_is_60s(tmp_path: Path):
+    write_skill(tmp_path, "spam", """\
+        ---
+        name: spam
+        description: too eager
+        watch: 5
+        action: {command: echo hi}
+        ---
+        """)
+    assert SkillLoader(tmp_path).watchers()[0].watch_interval == 60.0
+
+
+def test_watch_only_skill_needs_no_triggers(tmp_path: Path):
+    write_skill(tmp_path, "quiet", """\
+        ---
+        name: quiet
+        description: schedule only
+        watch: 600
+        action: {command: echo hi}
+        ---
+        """)
+    loader = SkillLoader(tmp_path)
+    assert loader.find("quiet") is None      # no voice trigger
+    assert len(loader.watchers()) == 1
+
+
+def test_skill_with_neither_trigger_nor_watch_rejected(tmp_path: Path):
+    write_skill(tmp_path, "inert", """\
+        ---
+        name: inert
+        description: does nothing
+        action: {command: echo hi}
+        ---
+        """)
+    assert SkillLoader(tmp_path).scan() == []

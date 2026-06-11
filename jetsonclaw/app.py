@@ -50,6 +50,9 @@ class Jarvis:
         self._last_interaction = time.time()
         self._context_floor = 0.0  # "forget that" raises this
         self._turn_replies: list[str] = []
+        self._route_lock = asyncio.Lock()  # one utterance through the pipeline at a time
+        self._watch_due: dict[str, float] = {}
+        self._watch_seen: dict[str, str] = {}
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
@@ -84,12 +87,19 @@ class Jarvis:
         self._capture.start()
         self._set_state(State.IDLE)
         loop.call_later(HEALTHY_AFTER_SECS, self.guard.mark_healthy)
-        asyncio.create_task(self._sleep_loop())
+        asyncio.create_task(self._background_loop())
 
-    async def _sleep_loop(self) -> None:
-        """Memory consolidation during idle time — REMY's version of sleep."""
+    async def _background_loop(self) -> None:
+        """One quiet loop, two duties: run watch skills on schedule, and
+        consolidate memory when long idle (REMY's version of sleep)."""
         while True:
-            await asyncio.sleep(600)
+            await asyncio.sleep(60)
+            if self._route_lock.locked():
+                continue  # never talk over an in-flight interaction
+            try:
+                await self._run_due_watchers()
+            except Exception as e:
+                self.bus.publish(EventType.ERROR, message=f"watcher: {e}")
             if time.time() - self._last_interaction < 1800:
                 continue
             try:
@@ -99,6 +109,22 @@ class Jarvis:
                                      intent=f"consolidated {day}")
             except Exception as e:
                 self.bus.publish(EventType.ERROR, message=f"consolidation: {e}")
+
+    async def _run_due_watchers(self) -> None:
+        """Run scheduled watch skills. Speak only when output changes —
+        a watcher that repeats itself is an alarm clock, not an assistant."""
+        now = time.time()
+        for skill in await asyncio.to_thread(self.skills.watchers):
+            if now < self._watch_due.get(skill.name, 0):
+                continue
+            self._watch_due[skill.name] = now + skill.watch_interval
+            output = (await asyncio.to_thread(skill.run, "")).strip()
+            if output in ("", "Done.") or output == self._watch_seen.get(skill.name):
+                self._watch_seen[skill.name] = output
+                continue
+            self._watch_seen[skill.name] = output
+            self.bus.publish(EventType.SKILL, skill=skill.name, intent="watch")
+            await self._respond(output)
 
     def stop(self) -> None:
         if self._capture is not None:
@@ -111,7 +137,7 @@ class Jarvis:
 
     def _on_utterance(self, audio: np.ndarray) -> None:
         """Called from the audio thread once a post-wake utterance is captured."""
-        loop = self.bus._loop
+        loop = self.bus.loop
         if loop is not None:
             asyncio.run_coroutine_threadsafe(self._handle_utterance(audio), loop)
 
@@ -129,9 +155,10 @@ class Jarvis:
         """Single entry point for voice, TUI, dashboard, and stdin input."""
         self.bus.publish(EventType.TRANSCRIPT, text=text)
         self._last_interaction = time.time()
-        self._turn_replies = []
         try:
-            await self._route(text)
+            async with self._route_lock:
+                self._turn_replies = []
+                await self._route(text)
         except Exception as e:
             self.bus.publish(EventType.ERROR, message=f"{type(e).__name__}: {e}")
             await self._respond("Something broke on my end, sir.")

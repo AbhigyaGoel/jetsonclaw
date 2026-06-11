@@ -53,6 +53,10 @@ class EventBus:
     def bind_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
 
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop | None:
+        return self._loop
+
     def subscribe(self, maxsize: int = 256) -> asyncio.Queue[Event]:
         queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=maxsize)
         self._subscribers.append(queue)

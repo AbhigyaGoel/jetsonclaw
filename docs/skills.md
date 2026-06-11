@@ -28,6 +28,28 @@ Free-form notes for humans and agents.
 | `action.script` | a Python file in the same directory exposing `handle(text) -> str` |
 | `requires.bins` | binaries that must exist or the skill is hidden |
 | `requires.pip` | pip packages the harness installs on activation |
+| `watch.interval_secs` | run on a schedule; see watchers below |
+
+## Watchers
+
+Add a `watch` block and the skill runs on a schedule instead of (or in addition to) voice triggers:
+
+```markdown
+---
+name: ci-watch
+description: announce CI failures on my repo
+watch:
+  interval_secs: 300
+action:
+  command: gh run list -R you/repo -L 1 --json conclusion,displayTitle --jq '.[] | select(.conclusion=="failure") | "CI failed: " + .displayTitle'
+requires:
+  bins: [gh]
+---
+```
+
+Rules: minimum interval 60 seconds, empty output means stay silent, and the assistant only speaks when the output **changes**. It will tell you the build broke once, not every five minutes. Watchers never interrupt an in-flight conversation.
+
+"Give yourself a watcher that tells me when ..." produces one of these.
 
 ## Script skills
 

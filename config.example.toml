@@ -13,7 +13,8 @@ silence_rms = 500.0
 silence_secs = 1.5
 
 [wake]
-model = "hey_jarvis_v0.1"
+model = "hey_jarvis_v0.1"      # or a path to a custom model, see docs/wake-word.md
+framework = "tflite"           # "onnx" for custom ONNX models
 threshold = 0.3                # lower = more sensitive
 
 [stt]
