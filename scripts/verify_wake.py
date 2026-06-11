@@ -3,7 +3,7 @@
 through the detector, and check scores. No microphone needed.
 
   python3 scripts/verify_wake.py hey_jarvis_v0.1 "hey jarvis"
-  python3 scripts/verify_wake.py ~/.jetsonclaw/wake/hey_remy.onnx "hey remy" --framework onnx
+  python3 scripts/verify_wake.py ~/.remy/wake/hey_remy.onnx "hey remy" --framework onnx
 
 Exit 0 when the phrase scores above threshold and the negatives stay below it.
 """
@@ -60,8 +60,8 @@ def main() -> int:
     parser.add_argument("--voice", default=None, help="piper .onnx voice path")
     args = parser.parse_args()
 
-    from jetsonclaw.audio.wake import WakeDetector
-    from jetsonclaw.config import load_config
+    from remy.audio.wake import WakeDetector
+    from remy.config import load_config
 
     cfg = load_config()
     voice = args.voice or str(

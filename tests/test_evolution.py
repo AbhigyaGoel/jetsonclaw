@@ -1,4 +1,4 @@
-from jetsonclaw.skills.selfiterate import append_evolution
+from remy.skills.selfiterate import append_evolution
 
 
 def test_journal_creates_with_header(tmp_path):

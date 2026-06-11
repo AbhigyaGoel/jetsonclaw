@@ -48,7 +48,7 @@ def _pip_install(packages: list[str]) -> tuple[bool, str]:
 
 def _run_selftest(directory: Path, script: str, name: str) -> tuple[bool, str]:
     path = directory / script
-    spec = importlib.util.spec_from_file_location(f"jetsonclaw_activate_{name}", path)
+    spec = importlib.util.spec_from_file_location(f"remy_activate_{name}", path)
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)

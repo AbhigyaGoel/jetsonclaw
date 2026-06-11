@@ -1,5 +1,5 @@
 
-from jetsonclaw.events import EventBus, EventType
+from remy.events import EventBus, EventType
 
 
 async def test_publish_fans_out_to_all_subscribers():

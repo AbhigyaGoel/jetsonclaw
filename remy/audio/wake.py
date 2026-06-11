@@ -4,7 +4,7 @@ Critical Jetson lesson: feed int16 numpy arrays, NEVER float32 — float32 input
 produces near-zero scores on clear speech while int16 scores 0.99+.
 
 `model` may be a bundled name ("hey_jarvis_v0.1") or a path to a custom
-.tflite/.onnx (e.g. ~/.jetsonclaw/wake/hey_remy.tflite). openWakeWord keys
+.tflite/.onnx (e.g. ~/.remy/wake/hey_remy.tflite). openWakeWord keys
 predictions by the filename stem, so we derive the key the same way.
 """
 

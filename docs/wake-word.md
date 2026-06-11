@@ -1,10 +1,10 @@
 # Custom wake words
 
-JetsonClaw ships listening for "hey jarvis" because it is the best pretrained English wake model openWakeWord bundles. To use a different phrase you train a small model (about 200KB) and point config at it:
+REMY ships listening for "hey jarvis" because it is the best pretrained English wake model openWakeWord bundles. To use a different phrase you train a small model (about 200KB) and point config at it:
 
 ```toml
 [wake]
-model = "~/.jetsonclaw/wake/hey_remy.tflite"   # or .onnx
+model = "~/.remy/wake/hey_remy.tflite"   # or .onnx
 framework = "tflite"                            # "onnx" if you trained ONNX
 threshold = 0.3
 ```

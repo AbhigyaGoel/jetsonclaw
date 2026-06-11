@@ -1,18 +1,18 @@
-# JetsonClaw
+# REMY
 
-[![CI](https://github.com/AbhigyaGoel/jetsonclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhigyaGoel/jetsonclaw/actions/workflows/ci.yml)
+[![CI](https://github.com/AbhigyaGoel/remy/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhigyaGoel/remy/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Jetson%20Orin%20%7C%20arm64-76b900)
 
-**JetsonClaw** is a voice assistant that runs on a Jetson Orin Nano and can rewrite its own code. Wake word, speech to text, and chat run fully on device. Anything that needs real work spawns a headless [Claude Code](https://code.claude.com) session billed to your existing Claude subscription, not an API key.
+**REMY** (Recursively Evolving Machine, Yours) is a voice assistant that runs on a Jetson Orin Nano and can rewrite its own code. Wake word, speech to text, and chat run fully on device. Anything that needs real work spawns a headless [Claude Code](https://code.claude.com) session billed to your existing Claude subscription, not an API key.
 
 ```
 » "give yourself a skill to flip a coin"
 « "That'll modify my own code. Say yes to proceed."
 » "yes"
 « "On it. Give me a few minutes."
-    agent: Creating a coin flip skill at ~/.jetsonclaw/skills/coinflip/
+    agent: Creating a coin flip skill at ~/.remy/skills/coinflip/
 « "Done. Say 'flip a coin' and I'll respond with Heads or Tails."
 » "flip a coin"
 « "HEADS!"
@@ -36,19 +36,19 @@ Two brains on purpose. Quick commands never leave the room. Code changes and int
 
 ```bash
 # on the Jetson (or any arm64 Linux with a mic)
-git clone https://github.com/AbhigyaGoel/jetsonclaw ~/jetsonclaw
-cd ~/jetsonclaw && bash scripts/install.sh
+git clone https://github.com/AbhigyaGoel/remy ~/remy
+cd ~/remy && bash scripts/install.sh
 
 # local chat model
 curl -fsSL https://ollama.com/install.sh | sh && ollama pull qwen2.5:3b
 
 # agent brain auth: run on any machine with a browser, paste token to the Jetson
 claude setup-token
-echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env
+echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.remy/env
 
 # check everything, then run
-~/.jetsonclaw/venv/bin/python -m jetsonclaw --doctor
-~/.jetsonclaw/venv/bin/python -m jetsonclaw
+~/.remy/venv/bin/python -m remy --doctor
+~/.remy/venv/bin/python -m remy
 ```
 
 Dashboard at `http://<jetson-ip>:8484`. Install it as a PWA on your phone: it has a mic button, so your phone is a remote.
@@ -73,16 +73,16 @@ Typed input works everywhere (TUI, dashboard, stdin) and runs the same pipeline 
 ## Self-modification, safely
 
 1. Every change runs in a fresh Claude Code session inside the repo
-2. The change must pass `python3 -m jetsonclaw --selftest` or it is discarded
+2. The change must pass `python3 -m remy --selftest` or it is discarded
 3. Passing changes are committed; the previous commit is recorded as last known good
 4. A crash loop at boot auto-reverts to last known good after 3 failed starts
 5. The agent has no shell access by default and asks for a spoken yes before running
 
-Skills are simpler: a `SKILL.md` plus optional `handler.py` under `~/.jetsonclaw/skills/`, hot-loaded on the next utterance with no restart. Declared pip dependencies are installed by the harness, and a failing selftest quarantines the skill. See [docs/skills.md](docs/skills.md).
+Skills are simpler: a `SKILL.md` plus optional `handler.py` under `~/.remy/skills/`, hot-loaded on the next utterance with no restart. Declared pip dependencies are installed by the harness, and a failing selftest quarantines the skill. See [docs/skills.md](docs/skills.md).
 
 ## Memory
 
-One episodic store, three views: the last few turns feed chat context, keyword search recalls older interactions, and an idle-time consolidation pass summarizes each day and folds durable facts into `MEMORY.md`. Personality lives in `~/.jetsonclaw/SOUL.md` and is plain markdown the agent itself can edit.
+One episodic store, three views: the last few turns feed chat context, keyword search recalls older interactions, and an idle-time consolidation pass summarizes each day and folds durable facts into `MEMORY.md`. Personality lives in `~/.remy/SOUL.md` and is plain markdown the agent itself can edit.
 
 ## Hardware
 
@@ -106,7 +106,7 @@ api_key_env = "GROQ_API_KEY"
 
 ## Configuration
 
-Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. Assistant name, wake word model, voices, models, ports, and agent permissions are all config.
+Copy [config.example.toml](config.example.toml) to `~/.remy/config.toml`. Assistant name, wake word model, voices, models, ports, and agent permissions are all config.
 
 ## Docs
 

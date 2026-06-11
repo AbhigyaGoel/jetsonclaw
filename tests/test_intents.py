@@ -2,7 +2,7 @@
 
 import pytest
 
-from jetsonclaw.router.intents import parse
+from remy.router.intents import parse
 
 
 @pytest.mark.parametrize("text,expected", [

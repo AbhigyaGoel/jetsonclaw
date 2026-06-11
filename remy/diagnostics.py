@@ -1,4 +1,4 @@
-"""`python -m jetsonclaw --doctor` — one command that tells a new user exactly
+"""`python -m remy --doctor` — one command that tells a new user exactly
 what's working and what to fix. Plug-and-play lives or dies on this."""
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def _check(label: str, ok: bool, detail: str = "", fix: str = "") -> bool:
 
 
 def run_doctor(cfg: Config) -> int:
-    print("\nJetsonClaw doctor\n=================")
+    print("\nREMY doctor\n=================")
     results = []
 
     # mic
@@ -86,7 +86,7 @@ def run_doctor(cfg: Config) -> int:
     results.append(_check("claude auth", token_ok,
                           "" if token_ok else "no token in environment",
                           "run `claude setup-token` on a machine with a browser, "
-                          "put it in ~/.jetsonclaw/env and ~/.bashrc"))
+                          "put it in ~/.remy/env and ~/.bashrc"))
 
     # spotify (optional)
     spotify = Path(cfg.spotify.token_file).expanduser().is_file()

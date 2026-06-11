@@ -1,6 +1,6 @@
 # Skills
 
-A skill is a directory under `~/.jetsonclaw/skills/` containing a `SKILL.md`. Skills are rescanned on every utterance with an mtime cache, so new or edited skills take effect immediately. No restart, no redeploy.
+A skill is a directory under `~/.remy/skills/` containing a `SKILL.md`. Skills are rescanned on every utterance with an mtime cache, so new or edited skills take effect immediately. No restart, no redeploy.
 
 ## Format
 
@@ -24,7 +24,7 @@ Free-form notes for humans and agents.
 | `name` | identifier, also used in logs |
 | `description` | one line, shown in skill catalogs |
 | `triggers` | case-insensitive regexes matched against the utterance |
-| `action.command` | shell snippet; the utterance is in `$JARVIS_TEXT`; stdout is spoken |
+| `action.command` | shell snippet; the utterance is in `$REMY_TEXT`; stdout is spoken |
 | `action.script` | a Python file in the same directory exposing `handle(text) -> str` |
 | `requires.bins` | binaries that must exist or the skill is hidden |
 | `requires.env` | env vars that must be set or the skill is hidden |

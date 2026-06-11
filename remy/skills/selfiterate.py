@@ -1,7 +1,7 @@
 """Voice-driven self-modification: "Jarvis, upgrade yourself ..."
 
 Flow: snapshot HEAD -> headless Claude Code session edits this repo ->
-smoke test (`python3 -m jetsonclaw --selftest`) -> commit + record
+smoke test (`python3 -m remy --selftest`) -> commit + record
 last-known-good + restart, or hard-reset on failure. "Undo that" reverts
 the most recent jarvis: commit.
 """
@@ -23,14 +23,14 @@ from .loader import SkillLoader
 
 COMMIT_PREFIX = "self: "  # name-agnostic — survives assistant renames
 
-_AGENT_BRIEF = """You are modifying JetsonClaw, the voice assistant you are running inside of.
+_AGENT_BRIEF = """You are modifying REMY, the voice assistant you are running inside of.
 
 PREFER A WORKSPACE SKILL when adding a new voice capability: create
-~/.jetsonclaw/skills/<name>/SKILL.md (YAML frontmatter: name, description,
+~/.remy/skills/<name>/SKILL.md (YAML frontmatter: name, description,
 triggers as regex list, action.command shell snippet OR action.script
 handler.py with `def handle(text) -> str`, optional requires.bins). Workspace
 skills hot-load instantly — no restart, no selftest. See
-~/.jetsonclaw/skills/time/ for the format. Only edit repo code when the
+~/.remy/skills/time/ for the format. Only edit repo code when the
 instruction requires changing core behavior.
 
 FOR REAL INTEGRATIONS (third-party APIs, anything needing pip packages):
@@ -49,7 +49,7 @@ Rules:
 - Keep changes minimal and focused on the instruction.
 - This runs on a Jetson Orin Nano: Python 3.10, numpy<2, no PyAudio (arecord only).
 - Do NOT run the app, install packages, or touch git — the harness handles commits and testing.
-- If you edit repo code, `python3 -m jetsonclaw --selftest` must still pass
+- If you edit repo code, `python3 -m remy --selftest` must still pass
   (it imports every module and runs the unit tests).
 - End with one short spoken-style sentence describing what you did.
 """
@@ -180,7 +180,7 @@ class SelfIterateSkill:
 
     def _smoke_test(self) -> tuple[bool, str]:
         result = subprocess.run(
-            [sys.executable, "-m", "jetsonclaw", "--selftest"],
+            [sys.executable, "-m", "remy", "--selftest"],
             cwd=str(self._repo), capture_output=True, text=True, timeout=300,
         )
         return result.returncode == 0, result.stdout + result.stderr

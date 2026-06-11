@@ -5,7 +5,7 @@ set -euo pipefail
 
 HOST="${1:-abhigya@abhigya-orin}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REMOTE_DIR="~/jetsonclaw"
+REMOTE_DIR="~/remy"
 
 echo "deploying to $HOST:$REMOTE_DIR"
 ssh "$HOST" "mkdir -p $REMOTE_DIR"

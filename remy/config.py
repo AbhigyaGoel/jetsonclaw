@@ -12,7 +12,7 @@ except ModuleNotFoundError:  # py310 (Jetson)
     import tomli as tomllib  # type: ignore[no-redef]
 
 DEFAULT_CONFIG_PATHS = (
-    Path.home() / ".jetsonclaw" / "config.toml",
+    Path.home() / ".remy" / "config.toml",
     Path(__file__).resolve().parent.parent / "config.toml",
 )
 
@@ -54,7 +54,7 @@ class SttConfig:
 class TtsConfig:
     enabled: bool = True
     voice: str = "en_GB-alan-medium"
-    voices_dir: str = "~/.jetsonclaw/voices"
+    voices_dir: str = "~/.remy/voices"
     length_scale: float = 1.0
 
 
@@ -80,7 +80,7 @@ class ChatConfig:
 @dataclass(frozen=True)
 class ClaudeConfig:
     binary: str = "claude"
-    workdir: str = "~/jetsonclaw"
+    workdir: str = "~/remy"
     timeout_secs: float = 600.0
     # No Bash by default — a misheard voice command must not be able to run
     # arbitrary shell. Add ",Bash" here if you accept that tradeoff.
@@ -89,7 +89,7 @@ class ClaudeConfig:
     permission_mode: str = "acceptEdits"
     confirm_tasks: bool = True  # "say yes" gate before agent tasks run
     mcp_config: str = ""  # path to an MCP servers json; agent sessions inherit it
-    heartbeat_hours: float = 0  # >0: run ~/.jetsonclaw/HEARTBEAT.md as an agent task on this cadence
+    heartbeat_hours: float = 0  # >0: run ~/.remy/HEARTBEAT.md as an agent task on this cadence
     # actionable requests nothing else handles escalate to the agent, which
     # solves them by growing a skill (set false for chat-only fallback)
     escalate: bool = True
@@ -138,7 +138,7 @@ _SECTIONS = {
 def load_config(path: str | Path | None = None) -> Config:
     """Load config.toml, falling back to defaults for anything unspecified."""
     raw: dict = {}
-    candidates = [Path(path)] if path else [Path(os.environ.get("JETSONCLAW_CONFIG", ""))]
+    candidates = [Path(path)] if path else [Path(os.environ.get("REMY_CONFIG", ""))]
     candidates += list(DEFAULT_CONFIG_PATHS)
     for candidate in candidates:
         if candidate and candidate.is_file():

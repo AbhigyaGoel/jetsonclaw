@@ -4,8 +4,8 @@
 
 ## Checklist
 
-- [ ] `python -m jetsonclaw --selftest` passes
-- [ ] `ruff check jetsonclaw tests` passes
+- [ ] `python -m remy --selftest` passes
+- [ ] `ruff check remy tests` passes
 - [ ] tested on: <!-- Jetson model + JetPack, or "x86 Linux, no audio hardware" -->
 
 ## AI disclosure

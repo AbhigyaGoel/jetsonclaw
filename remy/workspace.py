@@ -1,4 +1,4 @@
-"""Agent workspace at ~/.jetsonclaw — persona and memory as plain markdown.
+"""Agent workspace at ~/.remy — persona and memory as plain markdown.
 
 Pattern borrowed from OpenClaw: SOUL.md (persona), USER.md (who the owner is),
 MEMORY.md (curated long-term facts). They're injected into every brain call —
@@ -50,13 +50,13 @@ requires:
 ---
 Seeded example skill. Copy this directory layout to add more:
 frontmatter triggers are case-insensitive regexes; `action.command`
-runs in bash with the utterance in $JARVIS_TEXT and stdout is spoken;
+runs in bash with the utterance in $REMY_TEXT and stdout is spoken;
 or use `action.script: handler.py` with `def handle(text) -> str`.
 """
 
 
 class Workspace:
-    def __init__(self, root: str | Path = "~/.jetsonclaw",
+    def __init__(self, root: str | Path = "~/.remy",
                  name: str = "Remy", owner: str = "Chud") -> None:
         self.root = Path(root).expanduser()
         self._name = name

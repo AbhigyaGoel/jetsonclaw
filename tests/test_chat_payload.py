@@ -1,5 +1,5 @@
-from jetsonclaw.brain.chat import ChatBrain
-from jetsonclaw.config import ChatConfig
+from remy.brain.chat import ChatBrain
+from remy.config import ChatConfig
 
 
 def brain(**kw) -> ChatBrain:
@@ -46,9 +46,9 @@ def test_api_key_header_only_when_env_set(monkeypatch):
 
 
 def test_legacy_ollama_section_still_loads(tmp_path, monkeypatch):
-    monkeypatch.setattr("jetsonclaw.config.DEFAULT_CONFIG_PATHS", ())
+    monkeypatch.setattr("remy.config.DEFAULT_CONFIG_PATHS", ())
     path = tmp_path / "config.toml"
     path.write_text('[ollama]\nmodel = "qwen2.5:7b"\n')
-    from jetsonclaw.config import load_config
+    from remy.config import load_config
 
     assert load_config(path).chat.model == "qwen2.5:7b"

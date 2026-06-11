@@ -123,7 +123,7 @@ class Jarvis:
                 self.bus.publish(EventType.ERROR, message=f"consolidation: {e}")
 
     async def _run_heartbeat(self) -> None:
-        """Run ~/.jetsonclaw/HEARTBEAT.md as a standing agent instruction.
+        """Run ~/.remy/HEARTBEAT.md as a standing agent instruction.
         The agent replies HEARTBEAT_OK when nothing needs attention; only
         anything else is spoken. Off unless claude.heartbeat_hours is set."""
         path = self.workspace.root / "HEARTBEAT.md"

@@ -1,4 +1,4 @@
-"""Entry point: `python -m jetsonclaw [--headless] [--selftest] [--config PATH]`
+"""Entry point: `python -m remy [--headless] [--selftest] [--config PATH]`
 
 Import discipline matters here: the boot guard must run before importing the
 rest of the package, so a broken self-iteration can be auto-reverted even when
@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 REPO_DIR = Path(__file__).resolve().parent.parent
-STATE_DIR = "~/.jetsonclaw"
+STATE_DIR = "~/.remy"
 
 
 def selftest() -> int:
@@ -21,10 +21,10 @@ def selftest() -> int:
     import importlib
     import pkgutil
 
-    import jetsonclaw
+    import remy
 
     failures = []
-    for info in pkgutil.walk_packages(jetsonclaw.__path__, prefix="jetsonclaw."):
+    for info in pkgutil.walk_packages(remy.__path__, prefix="remy."):
         try:
             importlib.import_module(info.name)
         except Exception as e:
@@ -43,7 +43,7 @@ def selftest() -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="jetsonclaw")
+    parser = argparse.ArgumentParser(prog="remy")
     parser.add_argument("--selftest", action="store_true",
                         help="import all modules and run tests, then exit")
     parser.add_argument("--doctor", action="store_true",
@@ -57,12 +57,12 @@ def main(argv: list[str] | None = None) -> int:
         return selftest()
 
     if args.doctor:
-        from jetsonclaw.config import load_config
-        from jetsonclaw.diagnostics import run_doctor
+        from remy.config import load_config
+        from remy.diagnostics import run_doctor
         return run_doctor(load_config(args.config))
 
     # Boot guard BEFORE importing anything an agent might have broken.
-    from jetsonclaw.supervisor import BootGuard, restart_in_place
+    from remy.supervisor import BootGuard, restart_in_place
 
     guard = BootGuard(STATE_DIR, REPO_DIR)
     guard.mark_boot()
@@ -73,8 +73,8 @@ def main(argv: list[str] | None = None) -> int:
             restart_in_place()
         print("!! crash loop detected and no last-good ref recorded; continuing anyway")
 
-    from jetsonclaw.config import load_config
-    from jetsonclaw.runner import run_headless, run_tui
+    from remy.config import load_config
+    from remy.runner import run_headless, run_tui
 
     cfg = load_config(args.config)
     if args.headless:

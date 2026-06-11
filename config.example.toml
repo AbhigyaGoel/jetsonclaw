@@ -1,4 +1,4 @@
-# JetsonClaw configuration — copy to ~/.jetsonclaw/config.toml and edit.
+# REMY configuration — copy to ~/.remy/config.toml and edit.
 # Everything here is optional; unspecified values use sensible Jetson defaults.
 
 [identity]
@@ -36,13 +36,13 @@ num_predict = 150
 # api_key_env = "GROQ_API_KEY"   # name of the env var holding the key
 
 [claude]
-workdir = "~/jetsonclaw"       # where agent tasks run by default
+workdir = "~/remy"       # where agent tasks run by default
 timeout_secs = 600
 permission_mode = "acceptEdits"
 allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept the risk
 confirm_tasks = true           # require a spoken "yes" before agent tasks run
-# mcp_config = "~/.jetsonclaw/mcp.json"  # agent sessions inherit these MCP servers
-# heartbeat_hours = 6            # run ~/.jetsonclaw/HEARTBEAT.md as an agent task on this cadence
+# mcp_config = "~/.remy/mcp.json"  # agent sessions inherit these MCP servers
+# heartbeat_hours = 6            # run ~/.remy/HEARTBEAT.md as an agent task on this cadence
 
 [spotify]
 token_file = "~/spotify_tokens.json"

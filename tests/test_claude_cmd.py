@@ -1,5 +1,5 @@
-from jetsonclaw.brain.claude import ClaudeBridge
-from jetsonclaw.config import ClaudeConfig
+from remy.brain.claude import ClaudeBridge
+from remy.config import ClaudeConfig
 
 
 def bridge(**kw) -> ClaudeBridge:

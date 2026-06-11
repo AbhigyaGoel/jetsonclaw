@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from jetsonclaw.skills.loader import SkillLoader, parse_skill
+from remy.skills.loader import SkillLoader, parse_skill
 
 
 def write_skill(root: Path, name: str, body: str) -> Path:
@@ -42,7 +42,7 @@ def test_command_skill_runs(tmp_path: Path):
         description: say hi
         triggers: [say hi]
         action:
-          command: echo "hello $JARVIS_TEXT"
+          command: echo "hello $REMY_TEXT"
         ---
         """)
     skill = SkillLoader(tmp_path).find("say hi")

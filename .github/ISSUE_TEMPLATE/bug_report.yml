@@ -24,7 +24,7 @@ body:
   - type: textarea
     id: doctor
     attributes:
-      label: Output of `python -m jetsonclaw --doctor`
+      label: Output of `python -m remy --doctor`
       render: text
   - type: textarea
     id: logs

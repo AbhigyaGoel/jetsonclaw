@@ -83,4 +83,4 @@ class BootGuard:
 
 def restart_in_place() -> None:
     """Re-exec the current process — works under systemd and bare terminals."""
-    os.execv(sys.executable, [sys.executable, "-m", "jetsonclaw", *sys.argv[1:]])
+    os.execv(sys.executable, [sys.executable, "-m", "remy", *sys.argv[1:]])

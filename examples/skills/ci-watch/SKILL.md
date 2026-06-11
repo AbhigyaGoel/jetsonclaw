@@ -8,6 +8,6 @@ action:
 requires:
   bins: [gh]
 ---
-Install: copy to ~/.jetsonclaw/skills/ci-watch/ and replace OWNER/REPO.
+Install: copy to ~/.remy/skills/ci-watch/ and replace OWNER/REPO.
 Needs `gh auth login` once. Speaks only when the failing run changes;
 silent while CI is green.

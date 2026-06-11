@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from jetsonclaw.brain.episodic import EpisodicStore, _keywords
+from remy.brain.episodic import EpisodicStore, _keywords
 
 DAY = 86400.0
 NOW = DAY * 20000  # fixed fake "now", far from epoch

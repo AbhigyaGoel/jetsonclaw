@@ -29,7 +29,7 @@ OnText = Callable[[str], Awaitable[None]]
 
 def create_app(bus: EventBus, cfg: ServerConfig,
                on_text: OnText | None = None) -> FastAPI:
-    app = FastAPI(title="JetsonClaw", docs_url=None, redoc_url=None)
+    app = FastAPI(title="REMY", docs_url=None, redoc_url=None)
 
     def authorized(key: str | None) -> bool:
         if not cfg.auth_token:
@@ -52,7 +52,7 @@ def create_app(bus: EventBus, cfg: ServerConfig,
 
     # Agent-produced artifacts (mockups, page variants) reviewable from any
     # device on the LAN. Agents are told to write here and announce the path.
-    preview_dir = Path.home() / ".jetsonclaw" / "preview"
+    preview_dir = Path.home() / ".remy" / "preview"
     preview_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/preview", StaticFiles(directory=str(preview_dir), html=True),
               name="preview")

@@ -2,7 +2,7 @@
 
 ## Ground rules
 
-- `python -m jetsonclaw --selftest` and `ruff check jetsonclaw tests` must pass. CI enforces both.
+- `python -m remy --selftest` and `ruff check remy tests` must pass. CI enforces both.
 - Keep it lean. This project deletes code enthusiastically; a PR that removes lines is as welcome as one that adds them.
 - For features, open an issue first. Bug fixes can go straight to PR.
 - Say what hardware you tested on (Jetson model and JetPack version, or "x86 Linux, no audio").

@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from jetsonclaw.config import Config, load_config
+from remy.config import Config, load_config
 
 
 def test_defaults_when_no_file(tmp_path: Path, monkeypatch):
-    monkeypatch.setenv("JETSONCLAW_CONFIG", str(tmp_path / "missing.toml"))
-    monkeypatch.setattr("jetsonclaw.config.DEFAULT_CONFIG_PATHS", ())
+    monkeypatch.setenv("REMY_CONFIG", str(tmp_path / "missing.toml"))
+    monkeypatch.setattr("remy.config.DEFAULT_CONFIG_PATHS", ())
     cfg = load_config()
     assert isinstance(cfg, Config)
     assert cfg.audio.sample_rate == 16000
@@ -13,7 +13,7 @@ def test_defaults_when_no_file(tmp_path: Path, monkeypatch):
 
 
 def test_partial_override(tmp_path: Path, monkeypatch):
-    monkeypatch.setattr("jetsonclaw.config.DEFAULT_CONFIG_PATHS", ())
+    monkeypatch.setattr("remy.config.DEFAULT_CONFIG_PATHS", ())
     path = tmp_path / "config.toml"
     path.write_text('[audio]\nmic_device = "plughw:1,0"\n[tts]\nenabled = false\n')
     cfg = load_config(path)
@@ -23,7 +23,7 @@ def test_partial_override(tmp_path: Path, monkeypatch):
 
 
 def test_unknown_keys_ignored(tmp_path: Path, monkeypatch):
-    monkeypatch.setattr("jetsonclaw.config.DEFAULT_CONFIG_PATHS", ())
+    monkeypatch.setattr("remy.config.DEFAULT_CONFIG_PATHS", ())
     path = tmp_path / "config.toml"
     path.write_text('[wake]\nthreshold = 0.5\nfuture_option = "x"\n')
     cfg = load_config(path)

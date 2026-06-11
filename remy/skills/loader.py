@@ -1,6 +1,6 @@
 """Self-grown skills: SKILL.md files that hot-load — no restart, no selftest.
 
-A skill is a directory under ~/.jetsonclaw/skills/ containing SKILL.md with
+A skill is a directory under ~/.remy/skills/ containing SKILL.md with
 YAML frontmatter (format borrowed from OpenClaw, simplified for voice):
 
     ---
@@ -16,7 +16,7 @@ YAML frontmatter (format borrowed from OpenClaw, simplified for voice):
     ---
     Free-form notes for humans and agents.
 
-`action.command` runs a shell snippet (utterance in $JARVIS_TEXT, stdout is
+`action.command` runs a shell snippet (utterance in $REMY_TEXT, stdout is
 spoken). `action.script: handler.py` imports a sibling Python file and calls
 `handle(text) -> str`. Skills are rescanned on every utterance with an mtime
 cache, so "Jarvis, give yourself a skill" takes effect immediately.
@@ -73,7 +73,7 @@ class DynamicSkill:
             return None
         path = self.directory / self.script
         spec = importlib.util.spec_from_file_location(
-            f"jetsonclaw_skill_{self.name}", path)
+            f"remy_skill_{self.name}", path)
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)
@@ -96,7 +96,7 @@ class DynamicSkill:
         try:
             result = subprocess.run(
                 ["bash", "-c", self.command],
-                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "JARVIS_TEXT": text,
+                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "REMY_TEXT": text,
                      "HOME": str(Path.home())},
                 capture_output=True, text=True, timeout=COMMAND_TIMEOUT_SECS,
                 cwd=str(self.directory),
@@ -111,7 +111,7 @@ class DynamicSkill:
     def _run_script(self, text: str) -> str:
         path = self.directory / self.script
         spec = importlib.util.spec_from_file_location(
-            f"jetsonclaw_skill_{self.name}", path)
+            f"remy_skill_{self.name}", path)
         module = importlib.util.module_from_spec(spec)
         try:
             spec.loader.exec_module(module)

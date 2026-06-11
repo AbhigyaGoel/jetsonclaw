@@ -26,7 +26,7 @@ _STATE_WORDS = {
 
 
 class JarvisTUI(App):
-    TITLE = "JETSONCLAW"
+    TITLE = "REMY"
     BINDINGS = [("ctrl+q", "quit", "Quit")]
     CSS = """
     #status { height: 8; content-align: center middle; color: cyan; }

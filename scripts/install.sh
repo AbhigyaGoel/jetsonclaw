@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# JetsonClaw installer — run ON the Jetson (Orin Nano, JetPack r36, Ubuntu 22.04).
+# REMY installer — run ON the Jetson (Orin Nano, JetPack r36, Ubuntu 22.04).
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV="${JETSONCLAW_VENV:-$HOME/.jetsonclaw/venv}"
-VOICES_DIR="$HOME/.jetsonclaw/voices"
-VOICE="${JETSONCLAW_VOICE:-en_GB-alan-medium}"
+VENV="${REMY_VENV:-$HOME/.remy/venv}"
+VOICES_DIR="$HOME/.remy/voices"
+VOICE="${REMY_VOICE:-en_GB-alan-medium}"
 
-echo "== JetsonClaw install =="
+echo "== REMY install =="
 echo "repo: $REPO_DIR"
 
 # --- python venv + package ---
-mkdir -p "$HOME/.jetsonclaw"
+mkdir -p "$HOME/.remy"
 if [ ! -d "$VENV" ]; then
     python3 -m venv "$VENV"
 fi
@@ -42,7 +42,7 @@ if ! command -v claude >/dev/null 2>&1; then
     echo
     echo ">> AUTH: on a machine WITH a browser run:  claude setup-token"
     echo ">> then on this Jetson:"
-    echo ">>   echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.jetsonclaw/env"
+    echo ">>   echo 'CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.remy/env"
     echo ">>   echo 'export CLAUDE_CODE_OAUTH_TOKEN=<token>' >> ~/.bashrc"
 fi
 
@@ -55,7 +55,7 @@ EOF
 
 echo
 echo "== done =="
-echo "run:        $VENV/bin/python -m jetsonclaw"
-echo "headless:   $VENV/bin/python -m jetsonclaw --headless"
-echo "service:    sudo cp scripts/jetsonclaw.service /etc/systemd/system/ && sudo systemctl enable --now jetsonclaw"
+echo "run:        $VENV/bin/python -m remy"
+echo "headless:   $VENV/bin/python -m remy --headless"
+echo "service:    sudo cp scripts/remy.service /etc/systemd/system/ && sudo systemctl enable --now remy"
 echo "dashboard:  http://$(hostname -I | awk '{print $1}'):8484"

@@ -1,15 +1,15 @@
 [Unit]
-Description=JetsonClaw — JARVIS on a Jetson
+Description=REMY — JARVIS on a Jetson
 After=network-online.target sound.target ollama.service
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=abhigya
-WorkingDirectory=/home/abhigya/jetsonclaw
+WorkingDirectory=/home/abhigya/remy
 Environment=PYTHONUNBUFFERED=1
-EnvironmentFile=-/home/abhigya/.jetsonclaw/env
-ExecStart=/home/abhigya/.jetsonclaw/venv/bin/python -m jetsonclaw --headless
+EnvironmentFile=-/home/abhigya/.remy/env
+ExecStart=/home/abhigya/.remy/venv/bin/python -m remy --headless
 Restart=always
 RestartSec=3
 

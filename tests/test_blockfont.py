@@ -1,4 +1,4 @@
-from jetsonclaw.tui.blockfont import render_block
+from remy.tui.blockfont import render_block
 
 
 def test_six_lines():

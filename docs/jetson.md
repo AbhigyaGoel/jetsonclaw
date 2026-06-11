@@ -32,5 +32,5 @@ Setup details and pitfalls specific to the Jetson Orin Nano (JetPack r36, Ubuntu
 
 ## Process management
 
-- Run in the foreground or under systemd (`scripts/jetsonclaw.service`). Backgrounding with nohup/screen has caused audio device issues.
-- The systemd unit reads `~/.jetsonclaw/env` for `CLAUDE_CODE_OAUTH_TOKEN` and `PATH`.
+- Run in the foreground or under systemd (`scripts/remy.service`). Backgrounding with nohup/screen has caused audio device issues.
+- The systemd unit reads `~/.remy/env` for `CLAUDE_CODE_OAUTH_TOKEN` and `PATH`.

@@ -25,11 +25,11 @@ Talks through a local model (ollama by default, or any OpenAI-compatible endpoin
 | "remember that my locker code is 4912" | written to long-term memory instantly |
 | "what do you remember about my locker" | answers from long-term facts, daily summaries, and past conversations, with dates |
 
-Unprompted: every interaction is logged, and when REMY has been idle half an hour it consolidates past days into summaries and folds durable facts into long-term memory. Personality and user facts live in `~/.jetsonclaw/SOUL.md` and `USER.md`, plain markdown you (or REMY) can edit.
+Unprompted: every interaction is logged, and when REMY has been idle half an hour it consolidates past days into summaries and folds durable facts into long-term memory. Personality and user facts live in `~/.remy/SOUL.md` and `USER.md`, plain markdown you (or REMY) can edit.
 
 ## Skills
 
-Folders under `~/.jetsonclaw/skills/`, hot-loaded on the next utterance. No restart. Four kinds, mixable:
+Folders under `~/.remy/skills/`, hot-loaded on the next utterance. No restart. Four kinds, mixable:
 
 - **voice**: trigger phrases run a shell command or Python handler ("what time is it")
 - **watchers**: run on a schedule, speak only when their output changes (CI failed, package shipped)
@@ -47,11 +47,11 @@ Format reference and examples: [skills.md](skills.md), `examples/skills/`.
 | "continue" / "keep going" | resumes the previous agent session with its context |
 | "undo that" | reverts the last self-change |
 
-Safety, in order: spoken yes required before any agent runs; the agent has no shell access; new skills get their dependencies installed and selftests run by the harness, failures quarantined; code changes must pass the full test suite, with one repair attempt before rollback; every accepted change is a git commit with a recorded fallback; a crash loop at boot auto-reverts; everything is journaled to `~/.jetsonclaw/EVOLUTION.md` (what was asked, what changed, which commit).
+Safety, in order: spoken yes required before any agent runs; the agent has no shell access; new skills get their dependencies installed and selftests run by the harness, failures quarantined; code changes must pass the full test suite, with one repair attempt before rollback; every accepted change is a git commit with a recorded fallback; a crash loop at boot auto-reverts; everything is journaled to `~/.remy/EVOLUTION.md` (what was asked, what changed, which commit).
 
 ## Agent tasks
 
-"Edit my portfolio site to ..." and similar run a headless Claude Code session in your configured workdir, billed to your Claude subscription. Point `claude.mcp_config` at an MCP servers file and agent tasks inherit those tools (Notion, calendars, whatever you connect). Optional heartbeat: standing instructions in `~/.jetsonclaw/HEARTBEAT.md` run on a cadence and stay silent unless something needs you.
+"Edit my portfolio site to ..." and similar run a headless Claude Code session in your configured workdir, billed to your Claude subscription. Point `claude.mcp_config` at an MCP servers file and agent tasks inherit those tools (Notion, calendars, whatever you connect). Optional heartbeat: standing instructions in `~/.remy/HEARTBEAT.md` run on a cadence and stay silent unless something needs you.
 
 ## Spotify
 

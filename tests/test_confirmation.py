@@ -1,6 +1,6 @@
 import pytest
 
-from jetsonclaw.router.intents import is_affirmation, is_negation, parse
+from remy.router.intents import is_affirmation, is_negation, parse
 
 
 @pytest.mark.parametrize("text", ["yes", "Yeah do it", "sure", "go ahead",

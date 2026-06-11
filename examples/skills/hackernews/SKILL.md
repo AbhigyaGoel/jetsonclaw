@@ -7,4 +7,4 @@ triggers:
 action:
   script: handler.py
 ---
-Install: copy this directory to ~/.jetsonclaw/skills/hackernews/
+Install: copy this directory to ~/.remy/skills/hackernews/

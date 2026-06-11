@@ -7,5 +7,5 @@ venv/
 *.onnx
 *.onnx.json
 spotify_tokens.json
-.jetsonclaw/
+.remy/
 config.toml

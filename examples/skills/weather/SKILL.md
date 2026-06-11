@@ -10,5 +10,5 @@ action:
 requires:
   bins: [curl]
 ---
-Install: copy this directory to ~/.jetsonclaw/skills/weather/
+Install: copy this directory to ~/.remy/skills/weather/
 Set a city with wttr.in/CityName in the command if auto-detection guesses wrong.
