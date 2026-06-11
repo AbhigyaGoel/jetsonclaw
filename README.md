@@ -53,7 +53,7 @@ When you say *"Jarvis, upgrade yourself to …"*:
 
 ```bash
 # on the Jetson
-git clone https://github.com/you/jetsonclaw ~/jetsonclaw
+git clone https://github.com/AbhigyaGoel/jetsonclaw ~/jetsonclaw
 cd ~/jetsonclaw && bash scripts/install.sh
 
 # ollama (local chat brain)
