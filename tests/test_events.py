@@ -1,4 +1,3 @@
-import asyncio
 
 from jetsonclaw.events import EventBus, EventType
 

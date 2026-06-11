@@ -15,7 +15,7 @@ import json
 import re
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 _WORD = re.compile(r"[a-z0-9']+")

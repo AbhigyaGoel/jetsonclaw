@@ -19,6 +19,7 @@ from ..brain.claude import ClaudeBridge
 from ..events import EventBus, EventType
 from ..supervisor import BootGuard, _git
 from .activate import activate_skills
+from .loader import SkillLoader
 
 COMMIT_PREFIX = "self: "  # name-agnostic — survives assistant renames
 
@@ -79,9 +80,15 @@ class SelfIterateSkill:
         started_at = time.time()
         self._bus.publish(EventType.AGENT_START, task=instruction, kind="self-iterate")
 
+        brief = _AGENT_BRIEF
+        if self._skills_dir is not None:
+            catalog = await asyncio.to_thread(SkillLoader(self._skills_dir).catalog)
+            if catalog:
+                brief += f"\nSkills that already exist (extend, don't duplicate):\n{catalog}\n"
+
         result_text = ""
         async for line in self._bridge.run(instruction, workdir=self._repo,
-                                           system_append=_AGENT_BRIEF):
+                                           system_append=brief):
             self._bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
             if line.kind == "result":
                 result_text = line.text

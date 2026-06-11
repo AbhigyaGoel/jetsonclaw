@@ -73,8 +73,10 @@ def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
             elif ev.type == EventType.WAKE:
                 print("[wake word detected]")
             elif ev.type == EventType.STATE:
+                state = ev.data.get("state", "")
                 detail = ev.data.get("detail", "")
-                print(f"  ({ev.data.get('state')}{': ' + detail if detail else ''})")
+                if state != "idle":  # idle transitions are noise in a console
+                    print(f"  ({state}{': ' + detail if detail else ''})")
             elif ev.type == EventType.AGENT_OUTPUT:
                 print(f"  agent {ev.data.get('kind')}: {ev.data.get('text', '')[:160]}")
             elif ev.type == EventType.ERROR:

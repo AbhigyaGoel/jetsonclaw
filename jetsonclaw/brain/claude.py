@@ -108,13 +108,3 @@ class ClaudeBridge:
                 return AgentLine("error", str(msg.get("result", "unknown error"))[:500])
             return AgentLine("result", str(msg.get("result", "")).strip())
         return None
-
-    async def run_to_result(self, prompt: str, workdir: str | Path | None = None) -> str:
-        """Convenience: run a session and return only the final result text."""
-        result, error = "", ""
-        async for line in self.run(prompt, workdir):
-            if line.kind == "result":
-                result = line.text
-            elif line.kind == "error":
-                error = line.text
-        return result or error

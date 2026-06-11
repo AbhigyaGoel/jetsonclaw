@@ -21,7 +21,7 @@ _SELF_ITERATE = re.compile(
     r"\b(upgrade|improve|update|modify|fix|rewrite|teach|give)\s+(yourself|your\s+(own\s+)?"
     r"(code|skills?|voice|ui|interface|brain|abilities|response|personality))\b"
 )
-_ROLLBACK = re.compile(r"\b(undo|revert|roll\s*back)\b.*\b(that|it|change|update|last)?\b")
+_ROLLBACK = re.compile(r"\b(undo|revert|roll\s*back)\b")
 
 # Complex commands that need the agentic brain, not a 3B chat model
 _AGENT_VERBS = re.compile(
@@ -60,7 +60,7 @@ def _clean(text: str) -> str:
 def parse(raw: str) -> Intent:
     text = _clean(raw)
 
-    if _ROLLBACK.search(text) and any(w in text for w in ("undo", "revert", "roll")):
+    if _ROLLBACK.search(text):
         return Intent("self.rollback")
     if _SELF_ITERATE.search(text):
         return Intent("self.iterate", {"instruction": raw.strip()})
