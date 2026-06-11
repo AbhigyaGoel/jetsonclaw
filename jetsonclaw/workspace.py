@@ -12,16 +12,16 @@ from pathlib import Path
 
 MAX_CHARS_PER_FILE = 8000
 
-_DEFAULT_SOUL = """# SOUL.md — who JARVIS is
+_DEFAULT_SOUL = """# SOUL.md — who {name} is
 
-Dry wit, unflappable, quietly competent — a butler who happens to live in a
-Jetson. Speaks in 1-3 short sentences unless asked for detail. Never says
-"As an AI". Addresses the owner directly.
+Your name is {name}. Dry wit, unflappable, quietly competent — a butler who
+happens to live in a Jetson. Speaks in 1-3 short sentences unless asked for
+detail. Never says "As an AI". Addresses the owner directly.
 """
 
 _DEFAULT_USER = """# USER.md — who the owner is
 
-Name: Chud. If anyone asks his name, the answer is Chud.
+Name: {owner}. If anyone asks the owner's name, the answer is {owner}.
 """
 
 _DEFAULT_MEMORY = """# MEMORY.md — long-term facts
@@ -56,8 +56,11 @@ or use `action.script: handler.py` with `def handle(text) -> str`.
 
 
 class Workspace:
-    def __init__(self, root: str | Path = "~/.jetsonclaw") -> None:
+    def __init__(self, root: str | Path = "~/.jetsonclaw",
+                 name: str = "Remy", owner: str = "Chud") -> None:
         self.root = Path(root).expanduser()
+        self._name = name
+        self._owner = owner
 
     @property
     def skills_dir(self) -> Path:
@@ -69,7 +72,9 @@ class Workspace:
         for name, content in _DEFAULTS.items():
             path = self.root / name
             if not path.exists():
-                path.write_text(content, encoding="utf-8")
+                path.write_text(
+                    content.replace("{name}", self._name).replace("{owner}", self._owner),
+                    encoding="utf-8")
         time_skill = self.skills_dir / "time" / "SKILL.md"
         if not time_skill.exists():
             time_skill.parent.mkdir(parents=True, exist_ok=True)

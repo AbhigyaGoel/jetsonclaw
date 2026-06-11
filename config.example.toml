@@ -1,6 +1,11 @@
 # JetsonClaw configuration — copy to ~/.jetsonclaw/config.toml and edit.
 # Everything here is optional; unspecified values use sensible Jetson defaults.
 
+[identity]
+name = "Remy"                  # what your assistant calls itself
+owner = "Chud"                 # what it calls you
+# NOTE: the *wake word* is separate — it's an acoustic model, see [wake].
+
 [audio]
 mic_device = "plughw:2,0"     # find yours: arecord -l
 speaker_device = "default"     # find yours: aplay -l (e.g. "plughw:0,3" for HDMI)

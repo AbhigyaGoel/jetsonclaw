@@ -53,7 +53,7 @@ def is_negation(raw: str) -> bool:
 def _clean(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"[.,;:!?]+$", "", text)
-    text = re.sub(r"^(hey\s+)?jarvis[,\s]*", "", text)
+    text = re.sub(r"^(hey\s+)?(jarvis|remy)[,\s]*", "", text)
     return text.strip()
 
 
@@ -65,6 +65,8 @@ def parse(raw: str) -> Intent:
     if _SELF_ITERATE.search(text):
         return Intent("self.iterate", {"instruction": raw.strip()})
 
+    if "your name" in text or re.fullmatch(r"who are you", text):
+        return Intent("identity.self")
     if ("name" in text and any(w in text for w in ("my", "who", "what"))) \
             or re.fullmatch(r"who\s+am\s+i", text):
         return Intent("identity.name")

@@ -36,7 +36,7 @@ class Jarvis:
                  repo_dir: str) -> None:
         self.cfg = cfg
         self.bus = bus
-        self.workspace = Workspace()
+        self.workspace = Workspace(name=cfg.identity.name, owner=cfg.identity.owner)
         self.guard = guard
         self._repo_dir = repo_dir
         self._restart_requested = False
@@ -131,7 +131,11 @@ class Jarvis:
         intent = parse(text)
 
         if intent.name == "identity.name":
-            await self._respond("Chud")
+            await self._respond(self.cfg.identity.owner)
+            return
+
+        if intent.name == "identity.self":
+            await self._respond(self.cfg.identity.name)
             return
 
         if intent.name == "chat.reset":

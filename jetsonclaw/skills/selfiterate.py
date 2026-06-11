@@ -18,7 +18,7 @@ from ..brain.claude import ClaudeBridge
 from ..events import EventBus, EventType
 from ..supervisor import BootGuard, _git
 
-COMMIT_PREFIX = "jarvis: "
+COMMIT_PREFIX = "self: "  # name-agnostic — survives assistant renames
 
 _AGENT_BRIEF = """You are modifying JetsonClaw, the voice assistant you are running inside of.
 

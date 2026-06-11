@@ -21,7 +21,7 @@ _STATE_WORDS = {
     "transcribing": "HMM",
     "thinking": "HMM",
     "working": "WORKING",
-    "speaking": "JARVIS",
+    "speaking": None,  # filled with the assistant's name at runtime
 }
 
 
@@ -41,6 +41,7 @@ class JarvisTUI(App):
         super().__init__()
         self._jarvis = jarvis
         self._bus = bus
+        self._name = jarvis.cfg.identity.name
 
     def compose(self) -> ComposeResult:
         yield Static(render_block("BOOT"), id="status")
@@ -75,7 +76,8 @@ class JarvisTUI(App):
         while True:
             ev = await queue.get()
             if ev.type == EventType.STATE:
-                word = _STATE_WORDS.get(ev.data.get("state", ""), "READY")
+                word = _STATE_WORDS.get(ev.data.get("state", ""), "READY") \
+                    or self._name.upper()
                 status.update(render_block(word))
                 detail.update(ev.data.get("detail", ""))
             elif ev.type == EventType.AUDIO_LEVEL:
@@ -93,7 +95,7 @@ class JarvisTUI(App):
                 elif ev.data.get("partial"):
                     convo.write(f"          {text}")  # streamed continuation
                 else:
-                    convo.write(f"« jarvis: {text}")
+                    convo.write(f"« {self._name.lower()}: {text}")
             elif ev.type == EventType.AGENT_START:
                 agent.write(f"\n▶ {ev.data.get('kind', 'task')}: {ev.data.get('task', '')}")
             elif ev.type == EventType.AGENT_OUTPUT:

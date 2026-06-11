@@ -18,6 +18,12 @@ DEFAULT_CONFIG_PATHS = (
 
 
 @dataclass(frozen=True)
+class IdentityConfig:
+    name: str = "Remy"
+    owner: str = "Chud"
+
+
+@dataclass(frozen=True)
 class AudioConfig:
     mic_device: str = "plughw:2,0"
     sample_rate: int = 16000
@@ -59,9 +65,10 @@ class OllamaConfig:
     num_predict: int = 150
     temperature: float = 0.8
     timeout_secs: float = 30.0
+    # {name}/{owner} are filled from [identity] at load time
     system_prompt: str = (
-        "You are JARVIS, a sharp personal assistant running on a Jetson. "
-        "Your owner is Chud. Keep answers to 1-3 short sentences. "
+        "You are {name}, a sharp personal assistant running on a Jetson. "
+        "Your owner is {owner}. Keep answers to 1-3 short sentences. "
         "Be natural and helpful. No fluff."
     )
 
@@ -92,6 +99,7 @@ class ServerConfig:
 
 @dataclass(frozen=True)
 class Config:
+    identity: IdentityConfig = field(default_factory=IdentityConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     wake: WakeConfig = field(default_factory=WakeConfig)
     stt: SttConfig = field(default_factory=SttConfig)
@@ -103,6 +111,7 @@ class Config:
 
 
 _SECTIONS = {
+    "identity": IdentityConfig,
     "audio": AudioConfig,
     "wake": WakeConfig,
     "stt": SttConfig,
@@ -130,4 +139,14 @@ def load_config(path: str | Path | None = None) -> Config:
         section = raw.get(name, {})
         valid = {k: v for k, v in section.items() if k in cls.__dataclass_fields__}
         kwargs[name] = cls(**valid)
+
+    identity: IdentityConfig = kwargs["identity"]
+    ollama: OllamaConfig = kwargs["ollama"]
+    kwargs["ollama"] = OllamaConfig(**{
+        **{f: getattr(ollama, f) for f in ollama.__dataclass_fields__},
+        # plain replace, not str.format — user prompts may contain literal braces
+        "system_prompt": ollama.system_prompt
+            .replace("{name}", identity.name)
+            .replace("{owner}", identity.owner),
+    })
     return Config(**kwargs)

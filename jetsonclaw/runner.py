@@ -52,6 +52,8 @@ def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
     bus = EventBus()
     jarvis = Jarvis(cfg, bus, guard, str(repo_dir))
 
+    name = cfg.identity.name.lower()
+
     async def _print_events() -> None:
         queue = bus.subscribe()
         while True:
@@ -67,7 +69,7 @@ def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
                 elif ev.data.get("partial"):
                     print(f"         {text}")
                 else:
-                    print(f"« jarvis: {text}")
+                    print(f"« {name}: {text}")
             elif ev.type == EventType.WAKE:
                 print("[wake word detected]")
             elif ev.type == EventType.STATE:

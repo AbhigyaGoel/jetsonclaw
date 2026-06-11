@@ -97,3 +97,15 @@ def test_chat_fallback(text):
 
 def test_chat_does_not_swallow_spotify():
     assert parse("hey jarvis what's playing right now").name == "spotify.now_playing"
+
+
+def test_remy_wake_prefix_stripped():
+    intent = parse("Hey Remy, play Starboy.")
+    assert intent.name == "spotify.play_track"
+    assert intent.slots["query"] == "starboy"
+
+
+def test_your_name_is_self_not_owner():
+    assert parse("what's your name?").name == "identity.self"
+    assert parse("who are you").name == "identity.self"
+    assert parse("what's my name?").name == "identity.name"
