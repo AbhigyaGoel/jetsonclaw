@@ -25,6 +25,7 @@ cache, so "Jarvis, give yourself a skill" takes effect immediately.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import shutil
 import subprocess
@@ -49,10 +50,12 @@ class DynamicSkill:
     command: str | None = None
     script: str | None = None
     missing_bins: tuple[str, ...] = field(default=())
+    missing_env: tuple[str, ...] = field(default=())
     watch_interval: float | None = None  # run on a schedule; speak on changed output
 
     def available(self) -> bool:
-        return not self.missing_bins and (self.command or self.script)
+        return not self.missing_bins and not self.missing_env \
+            and (self.command or self.script)
 
     def matches(self, text: str) -> bool:
         return any(t.search(text) for t in self.triggers)
@@ -131,6 +134,8 @@ def parse_skill(path: Path) -> DynamicSkill | None:
     requires = meta.get("requires") or {}
     bins = [str(b) for b in (requires.get("bins") or [])]
     missing = tuple(b for b in bins if shutil.which(b) is None)
+    env_vars = [str(v) for v in (requires.get("env") or [])]
+    missing_env = tuple(v for v in env_vars if not os.environ.get(v))
 
     return DynamicSkill(
         name=name,
@@ -140,6 +145,7 @@ def parse_skill(path: Path) -> DynamicSkill | None:
         command=action.get("command"),
         script=action.get("script"),
         missing_bins=missing,
+        missing_env=missing_env,
         watch_interval=watch_interval,
     )
 

@@ -27,6 +27,7 @@ _ROLLBACK = re.compile(r"\b(undo|revert|roll\s*back)\b")
 _AGENT_VERBS = re.compile(
     r"^\s*(edit|create|build|write|deploy|refactor|debug|implement|update|fix)\s+(the|my|a|an)\b"
 )
+_AGENT_CONTINUE = re.compile(r"^(continue|keep going|carry on|keep at it)\b")
 
 _NOW_PLAYING = re.compile(
     r"(what'?s\s+playing|what\s+song|what\s+track|now\s+playing|currently\s+playing)"
@@ -108,6 +109,9 @@ def parse(raw: str) -> Intent:
         return Intent("spotify.play_track", {"query": query})
     if text in ("play",):
         return Intent("spotify.resume")
+
+    if _AGENT_CONTINUE.match(text):
+        return Intent("agent.continue", {"instruction": raw.strip()})
 
     if _AGENT_VERBS.match(text):
         return Intent("agent.task", {"instruction": raw.strip()})

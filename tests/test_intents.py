@@ -109,3 +109,9 @@ def test_your_name_is_self_not_owner():
     assert parse("what's your name?").name == "identity.self"
     assert parse("who are you").name == "identity.self"
     assert parse("what's my name?").name == "identity.name"
+
+
+def test_agent_continue():
+    intent = parse("keep going with the website changes")
+    assert intent.name == "agent.continue"
+    assert parse("continue").name == "agent.continue"

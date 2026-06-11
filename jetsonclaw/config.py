@@ -88,6 +88,7 @@ class ClaudeConfig:
     allowed_tools: str = "Read,Edit,Write,Glob,Grep,WebFetch,WebSearch"
     permission_mode: str = "acceptEdits"
     confirm_tasks: bool = True  # "say yes" gate before agent tasks run
+    mcp_config: str = ""  # path to an MCP servers json; agent sessions inherit it
 
 
 @dataclass(frozen=True)

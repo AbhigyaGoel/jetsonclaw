@@ -32,8 +32,25 @@ class ClaudeBridge:
     def available(self) -> bool:
         return shutil.which(self._cfg.binary) is not None
 
+    def build_cmd(self, prompt: str, system_append: str | None = None,
+                  continue_session: bool = False) -> list[str]:
+        cmd = [
+            self._cfg.binary, "-p", prompt,
+            "--output-format", "stream-json", "--verbose",
+            "--permission-mode", self._cfg.permission_mode,
+            "--allowedTools", self._cfg.allowed_tools,
+        ]
+        if continue_session:
+            cmd.append("--continue")  # resume the most recent session in workdir
+        if self._cfg.mcp_config:
+            cmd += ["--mcp-config", str(Path(self._cfg.mcp_config).expanduser())]
+        if system_append:
+            cmd += ["--append-system-prompt", system_append]
+        return cmd
+
     async def run(self, prompt: str, workdir: str | Path | None = None,
-                  system_append: str | None = None) -> AsyncIterator[AgentLine]:
+                  system_append: str | None = None,
+                  continue_session: bool = False) -> AsyncIterator[AgentLine]:
         """Run one headless session, yielding progress lines. The final yielded
         line has kind='result' (or 'error')."""
         if not self.available():
@@ -41,14 +58,7 @@ class ClaudeBridge:
             return
 
         cwd = Path(workdir or self._cfg.workdir).expanduser()
-        cmd = [
-            self._cfg.binary, "-p", prompt,
-            "--output-format", "stream-json", "--verbose",
-            "--permission-mode", self._cfg.permission_mode,
-            "--allowedTools", self._cfg.allowed_tools,
-        ]
-        if system_append:
-            cmd += ["--append-system-prompt", system_append]
+        cmd = self.build_cmd(prompt, system_append, continue_session)
 
         proc = await asyncio.create_subprocess_exec(
             *cmd, cwd=str(cwd),

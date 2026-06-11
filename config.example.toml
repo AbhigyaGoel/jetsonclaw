@@ -41,6 +41,7 @@ timeout_secs = 600
 permission_mode = "acceptEdits"
 allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept the risk
 confirm_tasks = true           # require a spoken "yes" before agent tasks run
+# mcp_config = "~/.jetsonclaw/mcp.json"  # agent sessions inherit these MCP servers
 
 [spotify]
 token_file = "~/spotify_tokens.json"

@@ -15,7 +15,7 @@ AI-assisted PRs are welcome. State the tier in your PR description:
 2. AI-assisted, human reviewed line by line
 3. mostly AI-generated
 
-For tiers 2 and 3, you must be able to explain every line. PRs where the submitter clearly has not read their own diff get closed without review. (Yes, the assistant in this repo writes its own code. It also runs its own tests. Hold yourself to its standard.)
+For tiers 2 and 3, you must be able to explain every line. PRs where the submitter clearly has not read their own diff get closed without review.
 
 ## Skills
 

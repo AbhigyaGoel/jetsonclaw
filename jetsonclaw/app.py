@@ -249,6 +249,11 @@ class Jarvis:
             await self._execute_agent_intent(intent)
             return
 
+        if intent.name == "agent.continue":
+            # resumes already-confirmed work, so no second confirmation
+            await self._execute_agent_intent(intent)
+            return
+
         # Hot-loaded workspace skills (self-grown) — checked before chat
         skill = await asyncio.to_thread(self.skills.find, text)
         if skill is not None:
@@ -281,12 +286,14 @@ class Jarvis:
             self._restart_requested = result.restart
             return
 
-        await self._respond("Working on it.")
+        resuming = intent.name == "agent.continue"
+        await self._respond("Picking it back up." if resuming else "Working on it.")
         self._set_state(State.WORKING, detail=instruction)
         self.bus.publish(EventType.AGENT_START, task=instruction, kind="task")
         result_text = ""
         async for line in self.claude.run(instruction,
-                                          system_append=self.workspace.persona_prompt()):
+                                          system_append=self.workspace.persona_prompt(),
+                                          continue_session=resuming):
             self.bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
             if line.kind in ("result", "error"):
                 result_text = line.text

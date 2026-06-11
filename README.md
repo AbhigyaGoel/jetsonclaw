@@ -20,21 +20,6 @@
 
 Real session, unedited. The skill existed before the sentence finished.
 
-|  | OpenClaw | PicoClaw | JetsonClaw |
-|---|---|---|---|
-| Language | TypeScript | Go | Python |
-| Interface | 23 chat channels | 19 chat channels | your voice |
-| Runs offline | partly | partly | everything but agent tasks |
-| Self-modifying | via file tools | no | tested, gated, auto-revert |
-| Wake word + TTS on device | no | no | yes |
-| Target | your servers | $10 boards | one $249 Jetson |
-
-## News
-
-- 2026-06-12: v0.3: provider-agnostic chat brain, watch skills, episodic memory with idle consolidation
-- 2026-06-11: first voice-commanded self-modification on real hardware
-- 2026-06-10: initial public release
-
 ## How it works
 
 ```
@@ -136,12 +121,6 @@ Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. 
 
 Wake word, STT, TTS, chat, Spotify, and skills run locally and cost nothing. Agent tasks draw from the Agent SDK credit included in Claude subscriptions (about $100/month equivalent on Max 5x as of mid 2026).
 
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md). Contributions welcome on any item; open an issue first for anything large.
-
 ## License
 
-MIT. The assistant is named after the rat who ran a kitchen he was never supposed to be in.
-
-[![Star History Chart](https://api.star-history.com/svg?repos=AbhigyaGoel/jetsonclaw&type=Date)](https://star-history.com/#AbhigyaGoel/jetsonclaw&Date)
+MIT

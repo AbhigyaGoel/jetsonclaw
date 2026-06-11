@@ -174,3 +174,21 @@ def test_skill_with_neither_trigger_nor_watch_rejected(tmp_path: Path):
         ---
         """)
     assert SkillLoader(tmp_path).scan() == []
+
+
+def test_missing_env_hides_skill(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("TOTALLY_UNSET_VAR_X", raising=False)
+    write_skill(tmp_path, "needskey", """\
+        ---
+        name: needskey
+        description: needs an api key
+        triggers: [secret thing]
+        action: {command: echo hi}
+        requires:
+          env: [TOTALLY_UNSET_VAR_X]
+        ---
+        """)
+    assert SkillLoader(tmp_path).find("secret thing") is None
+    monkeypatch.setenv("TOTALLY_UNSET_VAR_X", "value")
+    loader2 = SkillLoader(tmp_path)
+    assert loader2.find("secret thing") is not None

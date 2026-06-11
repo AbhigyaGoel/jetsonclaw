@@ -27,6 +27,7 @@ Free-form notes for humans and agents.
 | `action.command` | shell snippet; the utterance is in `$JARVIS_TEXT`; stdout is spoken |
 | `action.script` | a Python file in the same directory exposing `handle(text) -> str` |
 | `requires.bins` | binaries that must exist or the skill is hidden |
+| `requires.env` | env vars that must be set or the skill is hidden |
 | `requires.pip` | pip packages the harness installs on activation |
 | `watch.interval_secs` | run on a schedule; see watchers below |
 
