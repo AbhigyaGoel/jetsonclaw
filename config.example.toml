@@ -42,6 +42,7 @@ permission_mode = "acceptEdits"
 allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept the risk
 confirm_tasks = true           # require a spoken "yes" before agent tasks run
 # mcp_config = "~/.jetsonclaw/mcp.json"  # agent sessions inherit these MCP servers
+# heartbeat_hours = 6            # run ~/.jetsonclaw/HEARTBEAT.md as an agent task on this cadence
 
 [spotify]
 token_file = "~/spotify_tokens.json"

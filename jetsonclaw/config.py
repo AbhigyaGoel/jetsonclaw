@@ -89,6 +89,7 @@ class ClaudeConfig:
     permission_mode: str = "acceptEdits"
     confirm_tasks: bool = True  # "say yes" gate before agent tasks run
     mcp_config: str = ""  # path to an MCP servers json; agent sessions inherit it
+    heartbeat_hours: float = 0  # >0: run ~/.jetsonclaw/HEARTBEAT.md as an agent task on this cadence
 
 
 @dataclass(frozen=True)

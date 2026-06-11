@@ -62,6 +62,21 @@ class IterationResult:
     restart: bool = False
 
 
+def append_evolution(journal: Path, instruction: str, outcome: str,
+                     ref: str, ts: float | None = None) -> None:
+    """One auditable line per self-change: when, what was asked, what happened.
+    'Why did you change yourself?' gets answered from this file, not vibes."""
+    when = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+    entry = (f"\n## {when} ({ref})\n"
+             f"asked: {instruction.strip()}\n"
+             f"result: {outcome.strip()[:300]}\n")
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    with open(journal, "a", encoding="utf-8") as f:
+        if journal.stat().st_size == 0:
+            f.write("# EVOLUTION.md - every self-modification, in order\n")
+        f.write(entry)
+
+
 class SelfIterateSkill:
     def __init__(self, bridge: ClaudeBridge, guard: BootGuard,
                  repo_dir: str | Path, bus: EventBus,
@@ -116,6 +131,7 @@ class SelfIterateSkill:
             summary = result_text.strip().split("\n")[-1][:200] if result_text else \
                 "Done — no code changes were needed."
             self._bus.publish(EventType.AGENT_DONE, ok=True, detail="workspace-only change")
+            self._journal(instruction, summary, "workspace")
             return IterationResult(True, summary + activation_note)
 
         ok, test_output = await asyncio.to_thread(self._smoke_test)
@@ -126,6 +142,8 @@ class SelfIterateSkill:
 
         await asyncio.to_thread(self._commit, instruction)
         self._guard.record_good(before)  # the commit we can fall back to
+        head = await asyncio.to_thread(_git, self._repo, "rev-parse", "--short", "HEAD")
+        self._journal(instruction, result_text or "tests passed", head)
         self._bus.publish(EventType.AGENT_DONE, ok=True, detail="committed, restarting")
         return IterationResult(True, "Done and tested. Restarting with the upgrade.", restart=True)
 
@@ -135,6 +153,14 @@ class SelfIterateSkill:
             return IterationResult(False, "The last change wasn't one of mine — not touching it.")
         await asyncio.to_thread(_git, self._repo, "reset", "--hard", "HEAD~1")
         return IterationResult(True, "Reverted my last change. Restarting.", restart=True)
+
+    def _journal(self, instruction: str, outcome: str, ref: str) -> None:
+        if self._skills_dir is not None:
+            journal = Path(self._skills_dir).expanduser().parent / "EVOLUTION.md"
+            try:
+                append_evolution(journal, instruction, outcome, ref)
+            except OSError:
+                pass  # journaling must never break an iteration
 
     # --- blocking helpers (run in threads) ---
 

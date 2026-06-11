@@ -90,8 +90,9 @@ class Jarvis:
         asyncio.create_task(self._background_loop())
 
     async def _background_loop(self) -> None:
-        """One quiet loop, two duties: run watch skills on schedule, and
-        consolidate memory when long idle (REMY's version of sleep)."""
+        """One quiet loop, three duties: watch skills on schedule, the agent
+        heartbeat, and memory consolidation when long idle."""
+        next_heartbeat = time.time() + self.cfg.claude.heartbeat_hours * 3600
         while True:
             await asyncio.sleep(60)
             if self._route_lock.locked():
@@ -100,6 +101,12 @@ class Jarvis:
                 await self._run_due_watchers()
             except Exception as e:
                 self.bus.publish(EventType.ERROR, message=f"watcher: {e}")
+            if self.cfg.claude.heartbeat_hours > 0 and time.time() >= next_heartbeat:
+                next_heartbeat = time.time() + self.cfg.claude.heartbeat_hours * 3600
+                try:
+                    await self._run_heartbeat()
+                except Exception as e:
+                    self.bus.publish(EventType.ERROR, message=f"heartbeat: {e}")
             if time.time() - self._last_interaction < 1800:
                 continue
             try:
@@ -109,6 +116,29 @@ class Jarvis:
                                      intent=f"consolidated {day}")
             except Exception as e:
                 self.bus.publish(EventType.ERROR, message=f"consolidation: {e}")
+
+    async def _run_heartbeat(self) -> None:
+        """Run ~/.jetsonclaw/HEARTBEAT.md as a standing agent instruction.
+        The agent replies HEARTBEAT_OK when nothing needs attention; only
+        anything else is spoken. Off unless claude.heartbeat_hours is set."""
+        path = self.workspace.root / "HEARTBEAT.md"
+        if not path.is_file():
+            return
+        instruction = path.read_text(encoding="utf-8").strip()
+        if not instruction or not self.claude.available():
+            return
+        self.bus.publish(EventType.AGENT_START, task="heartbeat", kind="heartbeat")
+        result = ""
+        prompt = (f"{instruction}\n\nIf nothing needs the owner's attention, "
+                  f"reply with exactly: HEARTBEAT_OK")
+        async for line in self.claude.run(prompt,
+                                          system_append=self.workspace.persona_prompt()):
+            self.bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
+            if line.kind in ("result", "error"):
+                result = line.text
+        self.bus.publish(EventType.AGENT_DONE, ok=bool(result))
+        if result and "HEARTBEAT_OK" not in result:
+            await self._respond(self._summarize_for_voice(result))
 
     async def _run_due_watchers(self) -> None:
         """Run scheduled watch skills. Speak only when output changes —
