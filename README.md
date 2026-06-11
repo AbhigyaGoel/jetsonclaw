@@ -81,10 +81,41 @@ Dashboard: `http://<jetson-ip>:8484` — add to home screen on your phone, it's 
 | "hey jarvis, play blinding lights" | searches Spotify, plays it |
 | "play my gym playlist" | fuzzy-matches your playlists |
 | "skip" / "pause" / "what's playing" | playback control |
+| "what time is it" | a **self-grown skill** (see below) |
 | "upgrade yourself to ..." | self-iteration (see above) |
 | "undo that" | reverts the last self-change |
 | "edit the portfolio site to ..." | agent task in your configured workdir |
-| anything else | local LLM chat with the persona from `~/.jetsonclaw/SOUL.md` |
+| "forget that" / "new topic" | clears conversation memory |
+| anything else | local LLM chat — with conversation memory, streamed into TTS sentence-by-sentence |
+
+Agent tasks ask for a spoken **"yes"** before running (configurable), and the
+agent runs **without shell access by default** — a misheard command can edit
+files in its workdir but never execute arbitrary bash.
+
+No mic handy? Every surface accepts typed commands through the *same*
+pipeline: the TUI input box, the dashboard input, or plain stdin in
+`--headless` mode (`echo "what time is it" | python -m jetsonclaw --headless`).
+
+## Self-grown skills
+
+Skills are directories under `~/.jetsonclaw/skills/` with a `SKILL.md`:
+
+```markdown
+---
+name: weather
+description: current weather
+triggers: ["weather", "is it raining"]
+action:
+  command: curl -s "wttr.in/?format=%C+%t"
+requires:
+  bins: [curl]
+---
+```
+
+They **hot-load on the next utterance** — no restart, no redeploy. Which means
+when you say *"Jarvis, give yourself a weather skill"*, the agent writes one of
+these files and the capability exists by the time it finishes talking. Skills
+are plain files: share them, version them, copy them between machines.
 
 ## Personality is data, not code
 

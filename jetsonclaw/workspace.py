@@ -35,10 +35,33 @@ _DEFAULTS = {
     "MEMORY.md": _DEFAULT_MEMORY,
 }
 
+# Seeded example skill — shows the SKILL.md format and proves hot-loading.
+_TIME_SKILL = """---
+name: time
+description: tell the current time
+triggers:
+  - what time is it
+  - what's the time
+  - current time
+action:
+  command: date +"It's %-I:%M %p."
+requires:
+  bins: [date]
+---
+Seeded example skill. Copy this directory layout to add more:
+frontmatter triggers are case-insensitive regexes; `action.command`
+runs in bash with the utterance in $JARVIS_TEXT and stdout is spoken;
+or use `action.script: handler.py` with `def handle(text) -> str`.
+"""
+
 
 class Workspace:
     def __init__(self, root: str | Path = "~/.jetsonclaw") -> None:
         self.root = Path(root).expanduser()
+
+    @property
+    def skills_dir(self) -> Path:
+        return self.root / "skills"
 
     def ensure(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -47,6 +70,10 @@ class Workspace:
             path = self.root / name
             if not path.exists():
                 path.write_text(content, encoding="utf-8")
+        time_skill = self.skills_dir / "time" / "SKILL.md"
+        if not time_skill.exists():
+            time_skill.parent.mkdir(parents=True, exist_ok=True)
+            time_skill.write_text(_TIME_SKILL, encoding="utf-8")
 
     def _read(self, name: str) -> str:
         path = self.root / name

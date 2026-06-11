@@ -17,6 +17,7 @@ dependencies = [
     "uvicorn>=0.29",
     "websockets>=12",
     "textual>=0.58",
+    "pyyaml>=6",
     "tomli>=2.0; python_version < '3.11'",
     # selftest is a product feature (self-iteration gate), so test deps ship
     "pytest>=8",

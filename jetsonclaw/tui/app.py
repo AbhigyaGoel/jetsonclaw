@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import RichLog, Static
+from textual.widgets import Input, RichLog, Static
 
 from ..app import Jarvis
 from ..events import EventBus, EventType
@@ -25,14 +27,14 @@ _STATE_WORDS = {
 
 class JarvisTUI(App):
     TITLE = "JETSONCLAW"
-    BINDINGS = [("q", "quit", "Quit")]
+    BINDINGS = [("ctrl+q", "quit", "Quit")]
     CSS = """
     #status { height: 8; content-align: center middle; color: cyan; }
     #vu { height: 1; color: green; }
     #detail { height: 1; color: #7a8a94; }
     #convo { border: round cyan; height: 1fr; }
     #agent { border: round magenta; height: 1fr; }
-    #hint { height: 1; color: #7a8a94; }
+    #cmdline { border: round #2a4a5a; }
     """
 
     def __init__(self, jarvis: Jarvis, bus: EventBus) -> None:
@@ -49,7 +51,8 @@ class JarvisTUI(App):
                 yield RichLog(id="convo", wrap=True, markup=False, highlight=False)
             with Vertical():
                 yield RichLog(id="agent", wrap=True, markup=False, highlight=False)
-        yield Static(" say 'hey jarvis' · q to quit", id="hint")
+        yield Input(placeholder="say 'hey jarvis' — or type a command (ctrl+q quits)",
+                    id="cmdline")
 
     async def on_mount(self) -> None:
         self.run_worker(self._pump(), exclusive=False)
@@ -87,6 +90,8 @@ class JarvisTUI(App):
                 text = ev.data.get("text", "")
                 if ev.data.get("block"):
                     convo.write("\n" + render_block(text))
+                elif ev.data.get("partial"):
+                    convo.write(f"          {text}")  # streamed continuation
                 else:
                     convo.write(f"« jarvis: {text}")
             elif ev.type == EventType.AGENT_START:
@@ -100,6 +105,12 @@ class JarvisTUI(App):
                 agent.write("  ✔ done" if ev.data.get("ok") else "  ✘ failed")
             elif ev.type == EventType.ERROR:
                 convo.write(f"  ! {ev.data.get('message', '')}")
+
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        text = event.value.strip()
+        event.input.value = ""
+        if text:
+            asyncio.create_task(self._jarvis.handle_text(text))
 
     def action_quit(self) -> None:
         self._jarvis.stop()

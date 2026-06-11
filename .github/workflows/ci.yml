@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Light install: heavy audio deps (openwakeword, faster-whisper, piper)
+      # defer their imports, so the selftest gate runs without them — same
+      # trick the on-device self-iteration check relies on.
+      - run: pip install "numpy<2" fastapi uvicorn websockets textual pyyaml pytest pytest-asyncio "tomli; python_version < '3.11'"
+      - run: python -m jetsonclaw --selftest

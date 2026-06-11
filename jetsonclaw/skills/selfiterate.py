@@ -21,11 +21,22 @@ from ..supervisor import BootGuard, _git
 COMMIT_PREFIX = "jarvis: "
 
 _AGENT_BRIEF = """You are modifying JetsonClaw, the voice assistant you are running inside of.
+
+PREFER A WORKSPACE SKILL when adding a new voice capability: create
+~/.jetsonclaw/skills/<name>/SKILL.md (YAML frontmatter: name, description,
+triggers as regex list, action.command shell snippet OR action.script
+handler.py with `def handle(text) -> str`, optional requires.bins). Workspace
+skills hot-load instantly — no restart, no selftest. See
+~/.jetsonclaw/skills/time/ for the format. Only edit repo code when the
+instruction requires changing core behavior.
+
 Rules:
 - Keep changes minimal and focused on the instruction.
 - This runs on a Jetson Orin Nano: Python 3.10, numpy<2, no PyAudio (arecord only).
 - Do NOT run the app, install packages, or touch git — the harness handles commits and testing.
-- After editing, ensure `python3 -m jetsonclaw --selftest` would still pass (it imports every module and runs the unit tests).
+- If you edit repo code, `python3 -m jetsonclaw --selftest` must still pass
+  (it imports every module and runs the unit tests).
+- End with one short spoken-style sentence describing what you did.
 """
 
 
@@ -51,16 +62,23 @@ class SelfIterateSkill:
         before = await asyncio.to_thread(_git, self._repo, "rev-parse", "HEAD")
         self._bus.publish(EventType.AGENT_START, task=instruction, kind="self-iterate")
 
+        result_text = ""
         async for line in self._bridge.run(instruction, workdir=self._repo,
                                            system_append=_AGENT_BRIEF):
             self._bus.publish(EventType.AGENT_OUTPUT, kind=line.kind, text=line.text)
+            if line.kind == "result":
+                result_text = line.text
             if line.kind == "error":
                 await self._discard(before)
                 return IterationResult(False, f"That didn't work: {line.text[:120]}")
 
         changed = await asyncio.to_thread(_git, self._repo, "status", "--porcelain")
         if not changed:
-            return IterationResult(True, "I looked, but no changes were needed.")
+            # Workspace-skill path: nothing in the repo changed, no restart needed.
+            summary = result_text.strip().split("\n")[-1][:200] if result_text else \
+                "Done — no code changes were needed."
+            self._bus.publish(EventType.AGENT_DONE, ok=True, detail="workspace-only change")
+            return IterationResult(True, summary)
 
         ok, test_output = await asyncio.to_thread(self._smoke_test)
         if not ok:

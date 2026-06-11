@@ -27,7 +27,8 @@ num_predict = 150
 workdir = "~/jetsonclaw"       # where agent tasks run by default
 timeout_secs = 600
 permission_mode = "acceptEdits"
-allowed_tools = "Read,Edit,Write,Glob,Grep,Bash"
+allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept the risk
+confirm_tasks = true           # require a spoken "yes" before agent tasks run
 
 [spotify]
 token_file = "~/spotify_tokens.json"
@@ -35,3 +36,4 @@ token_file = "~/spotify_tokens.json"
 [server]
 host = "0.0.0.0"
 port = 8484
+auth_token = ""                # set to require ?key=<token> on the dashboard

@@ -48,6 +48,10 @@
   #conn { position: fixed; top: 10px; right: 14px; font-size: 10px;
     letter-spacing: .2em; color: var(--err); z-index: 3; }
   #conn.live { color: #6bffb0; }
+  #sayform { border-top: 1px solid var(--dim); padding: 8px; }
+  #saybox { width: 100%; background: rgba(75,225,255,.05); border: 1px solid var(--dim);
+    border-radius: 6px; color: var(--text); font: inherit; padding: 8px 10px; outline: none; }
+  #saybox:focus { border-color: var(--core); }
 </style>
 </head>
 <body>
@@ -58,7 +62,14 @@
     <div id="state"><div class="word">BOOT</div><div class="detail"></div></div>
   </div>
   <div id="panels">
-    <div class="panel"><h2>CONVERSATION</h2><div class="feed" id="convo"></div></div>
+    <div class="panel">
+      <h2>CONVERSATION</h2>
+      <div class="feed" id="convo"></div>
+      <form id="sayform">
+        <input id="saybox" type="text" autocomplete="off"
+               placeholder="type a command — same pipeline as voice">
+      </form>
+    </div>
     <div class="panel"><h2>AGENT ACTIVITY</h2><div class="feed" id="agent"></div></div>
   </div>
 </div>
@@ -138,7 +149,14 @@ function handle(ev) {
     case 'audio_level': targetLevel = Math.min(1, (d.rms || 0) / 2500); break;
     case 'wake': feedLine(convo, 'meta', `— wake ${(d.score || 0).toFixed(2)} —`); break;
     case 'transcript': feedLine(convo, 'you', d.text || ''); break;
-    case 'response': feedLine(convo, 'jarvis', d.text || ''); break;
+    case 'response':
+      if (d.partial && convo.lastChild && convo.lastChild.className === 'jarvis') {
+        convo.lastChild.textContent += ' ' + (d.text || '');  // merge streamed sentences
+        convo.scrollTop = convo.scrollHeight;
+      } else {
+        feedLine(convo, 'jarvis', d.text || '');
+      }
+      break;
     case 'agent_start': feedLine(agentFeed, 'meta', `▶ ${d.kind}: ${d.task || ''}`); break;
     case 'agent_output':
       feedLine(agentFeed, d.kind === 'tool' ? 'tool' : d.kind === 'error' ? 'error' : 'agent-text',
@@ -150,8 +168,11 @@ function handle(ev) {
   }
 }
 
+let ws = null;
 function connect() {
-  const ws = new WebSocket(`ws://${location.host}/ws`);
+  const key = new URLSearchParams(location.search).get('key');
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws${key ? '?key=' + encodeURIComponent(key) : ''}`);
   ws.onopen = () => { conn.textContent = 'LIVE'; conn.classList.add('live'); };
   ws.onmessage = (m) => { try { handle(JSON.parse(m.data)); } catch (_) {} };
   ws.onclose = () => {
@@ -160,6 +181,16 @@ function connect() {
   };
 }
 connect();
+
+document.getElementById('sayform').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const box = document.getElementById('saybox');
+  const text = box.value.trim();
+  if (text && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'say', text }));
+    box.value = '';
+  }
+});
 </script>
 </body>
 </html>

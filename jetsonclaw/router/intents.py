@@ -38,6 +38,18 @@ _PLAY_TRACK = re.compile(r"^play\s+(?P<q>.+)$")
 _RESUME_WORDS = {"", "music", "it", "song", "the music", "the song", "spotify"}
 
 
+_YES = re.compile(r"^(yes|yeah|yep|sure|go ahead|do it|proceed|confirm|affirmative|please do)\b")
+_NO = re.compile(r"^(no|nope|nah|cancel|stop|don't|never mind|nevermind|negative|abort)\b")
+
+
+def is_affirmation(raw: str) -> bool:
+    return bool(_YES.match(_clean(raw)))
+
+
+def is_negation(raw: str) -> bool:
+    return bool(_NO.match(_clean(raw)))
+
+
 def _clean(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r"[.,;:!?]+$", "", text)
@@ -56,6 +68,9 @@ def parse(raw: str) -> Intent:
     if ("name" in text and any(w in text for w in ("my", "who", "what"))) \
             or re.fullmatch(r"who\s+am\s+i", text):
         return Intent("identity.name")
+
+    if re.fullmatch(r"(forget (that|it|everything)|new (topic|conversation)|clean slate)", text):
+        return Intent("chat.reset")
 
     if _NOW_PLAYING.search(text):
         return Intent("spotify.now_playing")

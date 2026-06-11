@@ -1,9 +1,12 @@
-"""Launchers: TUI mode (default) and headless console mode. Both also start
-the LAN web server."""
+"""Launchers: TUI mode (default) and headless console mode. Both start the
+LAN web server and accept typed commands (TUI input box / stdin) so the full
+pipeline is usable and testable without a microphone."""
 
 from __future__ import annotations
 
 import asyncio
+import sys
+import threading
 from pathlib import Path
 
 from .app import Jarvis
@@ -21,7 +24,7 @@ def run_tui(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
     tui = JarvisTUI(jarvis, bus)
 
     async def _with_server() -> None:
-        server_task = asyncio.create_task(serve(bus, cfg.server))
+        server_task = asyncio.create_task(serve(bus, cfg.server, jarvis.handle_text))
         try:
             await tui.run_async()
         finally:
@@ -29,6 +32,18 @@ def run_tui(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
 
     asyncio.run(_with_server())
     return 0
+
+
+def _start_stdin_reader(loop: asyncio.AbstractEventLoop, jarvis: Jarvis) -> None:
+    """Typed lines on stdin run through the same pipeline as voice."""
+
+    def reader() -> None:
+        for line in sys.stdin:
+            text = line.strip()
+            if text:
+                asyncio.run_coroutine_threadsafe(jarvis.handle_text(text), loop)
+
+    threading.Thread(target=reader, name="stdin-input", daemon=True).start()
 
 
 def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
@@ -47,7 +62,12 @@ def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
                 print(f'\n» you: "{ev.data.get("text", "")}"')
             elif ev.type == EventType.RESPONSE:
                 text = ev.data.get("text", "")
-                print(render_block(text) if ev.data.get("block") else f"« jarvis: {text}")
+                if ev.data.get("block"):
+                    print(render_block(text))
+                elif ev.data.get("partial"):
+                    print(f"         {text}")
+                else:
+                    print(f"« jarvis: {text}")
             elif ev.type == EventType.WAKE:
                 print("[wake word detected]")
             elif ev.type == EventType.STATE:
@@ -60,9 +80,10 @@ def run_headless(cfg: Config, guard: BootGuard, repo_dir: Path) -> int:
 
     async def _main() -> None:
         printer = asyncio.create_task(_print_events())
-        server_task = asyncio.create_task(serve(bus, cfg.server))
+        server_task = asyncio.create_task(serve(bus, cfg.server, jarvis.handle_text))
         await jarvis.start()
-        print("\nReady. Say 'hey jarvis'. Ctrl-C to quit.\n")
+        _start_stdin_reader(asyncio.get_running_loop(), jarvis)
+        print("\nReady. Say 'hey jarvis' — or just type a command. Ctrl-C to quit.\n")
         try:
             await asyncio.Event().wait()  # run until interrupted
         finally:

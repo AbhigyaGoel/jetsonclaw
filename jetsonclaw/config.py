@@ -71,8 +71,11 @@ class ClaudeConfig:
     binary: str = "claude"
     workdir: str = "~/jetsonclaw"
     timeout_secs: float = 600.0
-    allowed_tools: str = "Read,Edit,Write,Glob,Grep,Bash"
+    # No Bash by default — a misheard voice command must not be able to run
+    # arbitrary shell. Add ",Bash" here if you accept that tradeoff.
+    allowed_tools: str = "Read,Edit,Write,Glob,Grep"
     permission_mode: str = "acceptEdits"
+    confirm_tasks: bool = True  # "say yes" gate before agent tasks run
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,7 @@ class SpotifyConfig:
 class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8484
+    auth_token: str = ""  # if set, dashboard requires ?key=<token>
 
 
 @dataclass(frozen=True)
