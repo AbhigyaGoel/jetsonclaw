@@ -19,7 +19,7 @@ from .audio.stt import Transcriber
 from .audio.tts import Speaker
 from .brain.claude import ClaudeBridge
 from .brain.episodic import Consolidator, EpisodicStore
-from .brain.ollama import OllamaBrain
+from .brain.chat import ChatBrain
 from .config import Config
 from .events import EventBus, EventType, State
 from .router.intents import Intent, is_affirmation, is_negation, parse
@@ -43,9 +43,9 @@ class Jarvis:
         self._restart_requested = False
         self._pending: Intent | None = None
 
-        self.ollama = OllamaBrain(cfg.ollama)
+        self.chat = ChatBrain(cfg.chat)
         self.episodes = EpisodicStore(self.workspace.root / "memory")
-        self.consolidator = Consolidator(self.episodes, self.ollama, self.workspace)
+        self.consolidator = Consolidator(self.episodes, self.chat, self.workspace)
         self._started_at = time.time()
         self._last_interaction = time.time()
         self._context_floor = 0.0  # "forget that" raises this
@@ -212,7 +212,7 @@ class Jarvis:
                 return
             context = "\n".join(facts + [ep.render() for ep in episodes])
             self._set_state(State.THINKING)
-            await self._respond_stream(self.ollama.stream_sentences(
+            await self._respond_stream(self.chat.stream_sentences(
                 f"Notes:\n{context}\n\nUsing only these notes, answer briefly: "
                 f"what do you remember about {query}?",
                 system=self.workspace.persona_prompt(fast=True)))
@@ -268,7 +268,7 @@ class Jarvis:
             notes = "\n".join(ep.render() for ep in recalled)
             prompt = f"Possibly relevant past interactions:\n{notes}\n\n{prompt}"
         await self._respond_stream(
-            self.ollama.stream_sentences(
+            self.chat.stream_sentences(
                 prompt, system=self.workspace.persona_prompt(fast=True)))
 
     async def _execute_agent_intent(self, intent: Intent) -> None:

@@ -56,20 +56,26 @@ def run_doctor(cfg: Config) -> int:
                           f"python3 -m piper.download_voices {cfg.tts.voice} "
                           f"--data-dir {cfg.tts.voices_dir}"))
 
-    # ollama
-    ollama_ok, ollama_detail = False, "unreachable"
-    try:
-        base = cfg.ollama.url.rsplit("/api/", 1)[0]
-        with urllib.request.urlopen(f"{base}/api/tags", timeout=5) as resp:
-            models = [m["name"] for m in json.loads(resp.read()).get("models", [])]
-        ollama_ok = cfg.ollama.model in models
-        ollama_detail = cfg.ollama.model if ollama_ok else \
-            f"{cfg.ollama.model} not pulled (have: {', '.join(models[:3]) or 'none'})"
-    except Exception as e:
-        ollama_detail = str(e)[:60]
-    results.append(_check("ollama", ollama_ok, ollama_detail,
-                          f"curl -fsSL https://ollama.com/install.sh | sh && "
-                          f"ollama pull {cfg.ollama.model}"))
+    # chat brain
+    if cfg.chat.provider == "ollama":
+        chat_ok, chat_detail = False, "unreachable"
+        try:
+            base = cfg.chat.url.rsplit("/api/", 1)[0]
+            with urllib.request.urlopen(f"{base}/api/tags", timeout=5) as resp:
+                models = [m["name"] for m in json.loads(resp.read()).get("models", [])]
+            chat_ok = cfg.chat.model in models
+            chat_detail = cfg.chat.model if chat_ok else \
+                f"{cfg.chat.model} not pulled (have: {', '.join(models[:3]) or 'none'})"
+        except Exception as e:
+            chat_detail = str(e)[:60]
+        results.append(_check("chat brain (ollama)", chat_ok, chat_detail,
+                              f"curl -fsSL https://ollama.com/install.sh | sh && "
+                              f"ollama pull {cfg.chat.model}"))
+    else:
+        key_ok = bool(os.environ.get(cfg.chat.api_key_env))
+        results.append(_check(f"chat brain ({cfg.chat.provider})", key_ok,
+                              f"{cfg.chat.model} via {cfg.chat.url}",
+                              f"set {cfg.chat.api_key_env} in the environment"))
 
     # claude
     claude_ok = shutil.which(cfg.claude.binary) is not None

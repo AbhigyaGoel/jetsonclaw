@@ -20,6 +20,21 @@
 
 Real session, unedited. The skill existed before the sentence finished.
 
+|  | OpenClaw | PicoClaw | JetsonClaw |
+|---|---|---|---|
+| Language | TypeScript | Go | Python |
+| Interface | 23 chat channels | 19 chat channels | your voice |
+| Runs offline | partly | partly | everything but agent tasks |
+| Self-modifying | via file tools | no | tested, gated, auto-revert |
+| Wake word + TTS on device | no | no | yes |
+| Target | your servers | $10 boards | one $249 Jetson |
+
+## News
+
+- 2026-06-12: v0.3: provider-agnostic chat brain, watch skills, episodic memory with idle consolidation
+- 2026-06-11: first voice-commanded self-modification on real hardware
+- 2026-06-10: initial public release
+
 ## How it works
 
 ```
@@ -92,6 +107,18 @@ One episodic store, three views: the last few turns feed chat context, keyword s
 
 Other arm64 or x86 Linux boards should work; the Jetson is what it is tuned and tested on.
 
+## Providers
+
+The chat brain speaks two protocols: ollama (the on-device default) and OpenAI chat completions. One config block covers OpenAI, Groq, OpenRouter, Together, DeepSeek, Mistral, vLLM, llama.cpp, LM Studio, and anything else with a `/v1/chat/completions` endpoint:
+
+```toml
+[chat]
+provider = "openai"
+url = "https://api.groq.com/openai/v1/chat/completions"
+model = "llama-3.3-70b-versatile"
+api_key_env = "GROQ_API_KEY"
+```
+
 ## Configuration
 
 Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. Assistant name, wake word model, voices, models, ports, and agent permissions are all config.
@@ -100,6 +127,7 @@ Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. 
 
 | Doc | Covers |
 |---|---|
+| [docs/architecture.md](docs/architecture.md) | every module, every workflow, and a prune guide |
 | [docs/skills.md](docs/skills.md) | skill format, synthesis, activation, quarantine |
 | [docs/wake-word.md](docs/wake-word.md) | training a custom wake word |
 | [docs/jetson.md](docs/jetson.md) | Jetson-specific setup notes and pitfalls |
@@ -108,6 +136,12 @@ Copy [config.example.toml](config.example.toml) to `~/.jetsonclaw/config.toml`. 
 
 Wake word, STT, TTS, chat, Spotify, and skills run locally and cost nothing. Agent tasks draw from the Agent SDK credit included in Claude subscriptions (about $100/month equivalent on Max 5x as of mid 2026).
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md). Contributions welcome on any item; open an issue first for anything large.
+
 ## License
 
-MIT
+MIT. The assistant is named after the rat who ran a kitchen he was never supposed to be in.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=AbhigyaGoel/jetsonclaw&type=Date)](https://star-history.com/#AbhigyaGoel/jetsonclaw&Date)

@@ -1,0 +1,33 @@
+name: Bug report
+description: Something broke
+labels: [bug]
+body:
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware
+      placeholder: Jetson Orin Nano 8GB, JetPack r36.4 / Raspberry Pi 5 / x86 Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: audio
+    attributes:
+      label: Mic and speaker
+      placeholder: Logitech C270 mic, HDMI audio out
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you said or typed, what you expected, what you got.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `python -m jetsonclaw --doctor`
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      render: text

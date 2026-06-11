@@ -59,19 +59,22 @@ class TtsConfig:
 
 
 @dataclass(frozen=True)
-class OllamaConfig:
+class ChatConfig:
+    provider: str = "ollama"  # "ollama" or "openai" (any /v1/chat/completions endpoint)
     url: str = "http://localhost:11434/api/generate"
     model: str = "qwen2.5:3b"
+    api_key_env: str = "OPENAI_API_KEY"  # env var name, openai provider only
     num_predict: int = 150
     temperature: float = 0.8
     timeout_secs: float = 30.0
-    keep_alive: str = "24h"  # keep model loaded; "-1" = forever
+    keep_alive: str = "24h"  # ollama only: keep model loaded; "-1" = forever
     # {name}/{owner} are filled from [identity] at load time
     system_prompt: str = (
         "You are {name}, a sharp personal assistant running on a Jetson. "
         "Your owner is {owner}. Keep answers to 1-3 short sentences. "
         "Be natural and helpful. No fluff."
     )
+
 
 
 @dataclass(frozen=True)
@@ -106,7 +109,7 @@ class Config:
     wake: WakeConfig = field(default_factory=WakeConfig)
     stt: SttConfig = field(default_factory=SttConfig)
     tts: TtsConfig = field(default_factory=TtsConfig)
-    ollama: OllamaConfig = field(default_factory=OllamaConfig)
+    chat: ChatConfig = field(default_factory=ChatConfig)
     claude: ClaudeConfig = field(default_factory=ClaudeConfig)
     spotify: SpotifyConfig = field(default_factory=SpotifyConfig)
     server: ServerConfig = field(default_factory=ServerConfig)
@@ -118,7 +121,7 @@ _SECTIONS = {
     "wake": WakeConfig,
     "stt": SttConfig,
     "tts": TtsConfig,
-    "ollama": OllamaConfig,
+    "chat": ChatConfig,
     "claude": ClaudeConfig,
     "spotify": SpotifyConfig,
     "server": ServerConfig,
@@ -136,6 +139,9 @@ def load_config(path: str | Path | None = None) -> Config:
                 raw = tomllib.load(f)
             break
 
+    if "chat" not in raw and "ollama" in raw:
+        raw["chat"] = raw["ollama"]  # pre-rename configs keep working
+
     kwargs = {}
     for name, cls in _SECTIONS.items():
         section = raw.get(name, {})
@@ -143,11 +149,11 @@ def load_config(path: str | Path | None = None) -> Config:
         kwargs[name] = cls(**valid)
 
     identity: IdentityConfig = kwargs["identity"]
-    ollama: OllamaConfig = kwargs["ollama"]
-    kwargs["ollama"] = OllamaConfig(**{
-        **{f: getattr(ollama, f) for f in ollama.__dataclass_fields__},
+    chat: ChatConfig = kwargs["chat"]
+    kwargs["chat"] = ChatConfig(**{
+        **{f: getattr(chat, f) for f in chat.__dataclass_fields__},
         # plain replace, not str.format — user prompts may contain literal braces
-        "system_prompt": ollama.system_prompt
+        "system_prompt": chat.system_prompt
             .replace("{name}", identity.name)
             .replace("{owner}", identity.owner),
     })

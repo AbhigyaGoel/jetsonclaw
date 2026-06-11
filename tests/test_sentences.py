@@ -1,4 +1,4 @@
-from jetsonclaw.brain.ollama import split_complete_sentences
+from jetsonclaw.brain.chat import split_complete_sentences
 
 
 def test_no_boundary_keeps_buffering():

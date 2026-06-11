@@ -149,7 +149,7 @@ class Consolidator:
 
     def __init__(self, store: EpisodicStore, brain, workspace) -> None:
         self._store = store
-        self._brain = brain  # OllamaBrain
+        self._brain = brain  # ChatBrain
         self._workspace = workspace
 
     async def consolidate_one(self) -> str | None:

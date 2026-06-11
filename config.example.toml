@@ -25,9 +25,15 @@ enabled = true
 voice = "en_GB-alan-medium"    # the butler. browse: rhasspy.github.io/piper-samples
 length_scale = 1.0             # >1 = slower speech
 
-[ollama]
+[chat]
+provider = "ollama"            # or "openai" for any /v1/chat/completions endpoint
 model = "qwen2.5:3b"
 num_predict = 150
+# openai provider example (Groq, OpenRouter, vLLM, llama.cpp, LM Studio, ...):
+# provider = "openai"
+# url = "https://api.groq.com/openai/v1/chat/completions"
+# model = "llama-3.3-70b-versatile"
+# api_key_env = "GROQ_API_KEY"   # name of the env var holding the key
 
 [claude]
 workdir = "~/jetsonclaw"       # where agent tasks run by default

@@ -1,0 +1,22 @@
+name: Feature request
+description: Something it should do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What and why
+      description: One paragraph. Check ROADMAP.md first; some things are deliberately out of scope.
+    validations:
+      required: true
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Could this be a skill instead of core code?
+      description: Most capabilities belong in a SKILL.md, which needs no PR at all.
+      options:
+        - "Probably a skill"
+        - "Needs core changes"
+        - "Not sure"
+    validations:
+      required: true
