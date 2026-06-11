@@ -19,5 +19,6 @@ jobs:
       # Light install: heavy audio deps (openwakeword, faster-whisper, piper)
       # defer their imports, so the selftest gate runs without them — same
       # trick the on-device self-iteration check relies on.
-      - run: pip install "numpy<2" fastapi uvicorn websockets textual pyyaml pytest pytest-asyncio "tomli; python_version < '3.11'"
+      - run: pip install "numpy<2" fastapi uvicorn websockets textual pyyaml pytest pytest-asyncio ruff "tomli; python_version < '3.11'"
+      - run: ruff check jetsonclaw tests
       - run: python -m jetsonclaw --selftest
