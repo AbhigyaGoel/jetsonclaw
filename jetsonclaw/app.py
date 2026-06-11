@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import time
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from .audio.capture import CaptureLoop
 from .audio.stt import Transcriber
 from .audio.tts import Speaker
 from .brain.claude import ClaudeBridge
+from .brain.episodic import Consolidator, EpisodicStore
 from .brain.memory import ConversationMemory
 from .brain.ollama import OllamaBrain
 from .config import Config
@@ -44,10 +46,15 @@ class Jarvis:
 
         self.memory = ConversationMemory()
         self.ollama = OllamaBrain(cfg.ollama)
+        self.episodes = EpisodicStore(self.workspace.root / "memory")
+        self.consolidator = Consolidator(self.episodes, self.ollama, self.workspace)
+        self._last_interaction = time.time()
+        self._turn_replies: list[str] = []
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
-        self.self_iterate = SelfIterateSkill(self.claude, guard, repo_dir, bus)
+        self.self_iterate = SelfIterateSkill(self.claude, guard, repo_dir, bus,
+                                             skills_dir=self.workspace.skills_dir)
         self.speaker = Speaker(cfg.tts.voice, cfg.tts.voices_dir,
                                cfg.audio.speaker_device, cfg.tts.length_scale,
                                cfg.tts.enabled)
@@ -77,6 +84,21 @@ class Jarvis:
         self._capture.start()
         self._set_state(State.IDLE)
         loop.call_later(HEALTHY_AFTER_SECS, self.guard.mark_healthy)
+        asyncio.create_task(self._sleep_loop())
+
+    async def _sleep_loop(self) -> None:
+        """Memory consolidation during idle time — REMY's version of sleep."""
+        while True:
+            await asyncio.sleep(600)
+            if time.time() - self._last_interaction < 1800:
+                continue
+            try:
+                day = await self.consolidator.consolidate_one()
+                if day:
+                    self.bus.publish(EventType.SKILL, skill="memory",
+                                     intent=f"consolidated {day}")
+            except Exception as e:
+                self.bus.publish(EventType.ERROR, message=f"consolidation: {e}")
 
     def stop(self) -> None:
         if self._capture is not None:
@@ -106,12 +128,18 @@ class Jarvis:
     async def handle_text(self, text: str) -> None:
         """Single entry point for voice, TUI, dashboard, and stdin input."""
         self.bus.publish(EventType.TRANSCRIPT, text=text)
+        self._last_interaction = time.time()
+        self._turn_replies = []
         try:
             await self._route(text)
         except Exception as e:
             self.bus.publish(EventType.ERROR, message=f"{type(e).__name__}: {e}")
             await self._respond("Something broke on my end, sir.")
         finally:
+            reply = " ".join(self._turn_replies)
+            if reply:
+                await asyncio.to_thread(self.episodes.append, text, reply,
+                                        parse(text).name)
             if self._restart_requested:
                 self.stop()
             self._set_state(State.IDLE)
@@ -179,11 +207,17 @@ class Jarvis:
             await self._respond(reply)
             return
 
-        # Default: local chat with conversation memory, streamed into TTS
+        # Default: local chat — conversation memory + episodic recall,
+        # streamed into TTS sentence-by-sentence
         self._set_state(State.THINKING)
         prompt = self.memory.as_prompt(text)
+        recalled = await asyncio.to_thread(self.episodes.search, text)
+        if recalled:
+            notes = "\n".join(ep.render() for ep in recalled)
+            prompt = f"Possibly relevant past interactions:\n{notes}\n\n{prompt}"
         full = await self._respond_stream(
-            self.ollama.stream_sentences(prompt, system=self.workspace.persona_prompt()))
+            self.ollama.stream_sentences(
+                prompt, system=self.workspace.persona_prompt(fast=True)))
         if full:
             self.memory.add(text, full)
 
@@ -214,6 +248,7 @@ class Jarvis:
     async def _respond(self, text: str) -> None:
         if not text:
             text = "Done."
+        self._turn_replies.append(text)
         words = text.split()
         block = len(words) <= 2 and bool(_WORDISH.match(text))
         self.bus.publish(EventType.RESPONSE, text=text, block=block)
@@ -252,7 +287,10 @@ class Jarvis:
                 if self._capture is not None:
                     self._capture.resume()
                 self.bus.publish(EventType.SPEAKING, active=False)
-        return " ".join(spoken)
+        full = " ".join(spoken)
+        if full:
+            self._turn_replies.append(full)
+        return full
 
     @staticmethod
     def _summarize_for_voice(result: str) -> str:

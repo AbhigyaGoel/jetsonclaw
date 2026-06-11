@@ -80,13 +80,16 @@ class Workspace:
             time_skill.parent.mkdir(parents=True, exist_ok=True)
             time_skill.write_text(_TIME_SKILL, encoding="utf-8")
 
-    def _read(self, name: str) -> str:
+    def _read(self, name: str, cap: int = MAX_CHARS_PER_FILE) -> str:
         path = self.root / name
         if not path.is_file():
             return ""
-        return path.read_text(encoding="utf-8", errors="replace")[:MAX_CHARS_PER_FILE]
+        return path.read_text(encoding="utf-8", errors="replace")[:cap]
 
-    def persona_prompt(self) -> str:
-        """Combined persona/memory block for system prompts."""
-        parts = [self._read(n) for n in ("SOUL.md", "USER.md", "MEMORY.md")]
+    def persona_prompt(self, fast: bool = False) -> str:
+        """Combined persona/memory block for system prompts. `fast` caps each
+        file hard — every extra KB is prefill latency on the 3B local model."""
+        caps = (1200, 600, 2400) if fast else (MAX_CHARS_PER_FILE,) * 3
+        parts = [self._read(n, c) for n, c in
+                 zip(("SOUL.md", "USER.md", "MEMORY.md"), caps)]
         return "\n\n".join(p for p in parts if p.strip())

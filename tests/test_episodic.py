@@ -1,0 +1,61 @@
+from pathlib import Path
+
+from jetsonclaw.brain.episodic import EpisodicStore, _keywords
+
+DAY = 86400.0
+NOW = DAY * 20000  # fixed fake "now", far from epoch
+
+
+def store_with(tmp_path: Path, items) -> EpisodicStore:
+    store = EpisodicStore(tmp_path / "memory")
+    for ts, user, reply in items:
+        store.append(user, reply, "chat", ts=ts)
+    return store
+
+
+def test_append_and_read_roundtrip(tmp_path):
+    store = store_with(tmp_path, [(NOW, "hello", "hi there")])
+    episodes = store.all()
+    assert len(episodes) == 1
+    assert episodes[0].user == "hello"
+
+
+def test_search_finds_keyword_match(tmp_path):
+    store = store_with(tmp_path, [
+        (NOW - 2 * DAY, "remind me to buy guitar strings", "Noted."),
+        (NOW - 2 * DAY, "play some jazz", "Playing jazz."),
+    ])
+    hits = store.search("what did I say about the guitar", now=NOW)
+    assert len(hits) == 1
+    assert "guitar" in hits[0].user
+
+
+def test_search_skips_recent_episodes(tmp_path):
+    store = store_with(tmp_path, [(NOW - 60, "guitar strings", "Noted.")])
+    assert store.search("guitar", now=NOW) == []
+
+
+def test_search_prefers_recent_over_old(tmp_path):
+    store = store_with(tmp_path, [
+        (NOW - 300 * DAY, "the wifi password is hunter2", "Got it."),
+        (NOW - 1 * DAY, "the wifi password changed to hunter3", "Updated."),
+    ])
+    hits = store.search("what's the wifi password", now=NOW, limit=2)
+    assert "hunter3" in hits[0].user
+
+
+def test_on_day_and_unconsolidated(tmp_path):
+    store = store_with(tmp_path, [
+        (NOW - 2 * DAY, "old question", "old answer"),
+        (NOW, "today question", "today answer"),
+    ])
+    old_day = store.all()[0].day
+    assert len(store.on_day(old_day)) == 1
+    assert store.unconsolidated_days(now=NOW) == [old_day]
+    (store.dir / f"{old_day}.md").write_text("# done")
+    assert store.unconsolidated_days(now=NOW) == []
+
+
+def test_keywords_drop_stopwords():
+    assert "guitar" in _keywords("what about the guitar")
+    assert "the" not in _keywords("what about the guitar")

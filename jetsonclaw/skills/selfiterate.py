@@ -11,12 +11,14 @@ from __future__ import annotations
 import asyncio
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..brain.claude import ClaudeBridge
 from ..events import EventBus, EventType
 from ..supervisor import BootGuard, _git
+from .activate import activate_skills
 
 COMMIT_PREFIX = "self: "  # name-agnostic — survives assistant renames
 
@@ -29,6 +31,18 @@ handler.py with `def handle(text) -> str`, optional requires.bins). Workspace
 skills hot-load instantly — no restart, no selftest. See
 ~/.jetsonclaw/skills/time/ for the format. Only edit repo code when the
 instruction requires changing core behavior.
+
+FOR REAL INTEGRATIONS (third-party APIs, anything needing pip packages):
+- Research the API with WebFetch/WebSearch — read the actual docs, don't guess.
+- Write a proper Python module as action.script handler.py. Declare pip
+  dependencies in frontmatter as `requires: {pip: [package1, package2]}` —
+  the harness installs them after you finish (you have no shell).
+- Include `def selftest() -> str` in handler.py that makes one cheap REAL call
+  to verify the integration works (e.g. fetch the authed user's profile).
+  The harness runs it; if it fails, your skill is quarantined and the owner
+  is told. Read any needed API keys from a `config.yaml` next to handler.py,
+  and if a key is missing, make selftest() raise with a clear one-line
+  instruction for where the owner should paste it.
 
 Rules:
 - Keep changes minimal and focused on the instruction.
@@ -49,17 +63,20 @@ class IterationResult:
 
 class SelfIterateSkill:
     def __init__(self, bridge: ClaudeBridge, guard: BootGuard,
-                 repo_dir: str | Path, bus: EventBus) -> None:
+                 repo_dir: str | Path, bus: EventBus,
+                 skills_dir: str | Path | None = None) -> None:
         self._bridge = bridge
         self._guard = guard
         self._repo = Path(repo_dir).expanduser()
         self._bus = bus
+        self._skills_dir = skills_dir
 
     async def iterate(self, instruction: str) -> IterationResult:
         if not self._bridge.available():
             return IterationResult(False, "My agentic brain isn't installed yet, sir.")
 
         before = await asyncio.to_thread(_git, self._repo, "rev-parse", "HEAD")
+        started_at = time.time()
         self._bus.publish(EventType.AGENT_START, task=instruction, kind="self-iterate")
 
         result_text = ""
@@ -72,13 +89,27 @@ class SelfIterateSkill:
                 await self._discard(before)
                 return IterationResult(False, f"That didn't work: {line.text[:120]}")
 
+        # Activate any skills the agent wrote/touched: harness installs pip
+        # deps and runs selftests — failures are quarantined, never loaded.
+        activation_note = ""
+        if self._skills_dir is not None:
+            reports = await asyncio.to_thread(
+                activate_skills, self._skills_dir, started_at - 1)
+            for r in reports:
+                self._bus.publish(EventType.AGENT_OUTPUT, kind="tool",
+                                  text=f"activate {r.skill}: {'ok' if r.ok else r.detail}")
+            failed = [r for r in reports if not r.ok]
+            if failed:
+                activation_note = (f" But the {failed[0].skill} skill failed its "
+                                   f"selftest and was quarantined: {failed[0].detail}")
+
         changed = await asyncio.to_thread(_git, self._repo, "status", "--porcelain")
         if not changed:
             # Workspace-skill path: nothing in the repo changed, no restart needed.
             summary = result_text.strip().split("\n")[-1][:200] if result_text else \
                 "Done — no code changes were needed."
             self._bus.publish(EventType.AGENT_DONE, ok=True, detail="workspace-only change")
-            return IterationResult(True, summary)
+            return IterationResult(True, summary + activation_note)
 
         ok, test_output = await asyncio.to_thread(self._smoke_test)
         if not ok:

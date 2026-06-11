@@ -65,6 +65,7 @@ class OllamaConfig:
     num_predict: int = 150
     temperature: float = 0.8
     timeout_secs: float = 30.0
+    keep_alive: str = "24h"  # keep model loaded; "-1" = forever
     # {name}/{owner} are filled from [identity] at load time
     system_prompt: str = (
         "You are {name}, a sharp personal assistant running on a Jetson. "
@@ -80,7 +81,8 @@ class ClaudeConfig:
     timeout_secs: float = 600.0
     # No Bash by default — a misheard voice command must not be able to run
     # arbitrary shell. Add ",Bash" here if you accept that tradeoff.
-    allowed_tools: str = "Read,Edit,Write,Glob,Grep"
+    # Web tools let synthesis sessions read real API docs.
+    allowed_tools: str = "Read,Edit,Write,Glob,Grep,WebFetch,WebSearch"
     permission_mode: str = "acceptEdits"
     confirm_tasks: bool = True  # "say yes" gate before agent tasks run
 

@@ -46,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jetsonclaw")
     parser.add_argument("--selftest", action="store_true",
                         help="import all modules and run tests, then exit")
+    parser.add_argument("--doctor", action="store_true",
+                        help="diagnose mic/speaker/ollama/claude setup, then exit")
     parser.add_argument("--headless", action="store_true",
                         help="plain console output instead of the TUI")
     parser.add_argument("--config", default=None, help="path to config.toml")
@@ -53,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.selftest:
         return selftest()
+
+    if args.doctor:
+        from jetsonclaw.config import load_config
+        from jetsonclaw.diagnostics import run_doctor
+        return run_doctor(load_config(args.config))
 
     # Boot guard BEFORE importing anything an agent might have broken.
     from jetsonclaw.supervisor import BootGuard, restart_in_place

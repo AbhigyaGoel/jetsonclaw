@@ -96,6 +96,9 @@ class OllamaBrain:
             "prompt": text,
             "system": full_system,
             "stream": stream,
+            # keep the model resident — reloading costs seconds and risks
+            # transient OOM on Jetson shared memory
+            "keep_alive": self._cfg.keep_alive,
             "options": {
                 "temperature": self._cfg.temperature,
                 "num_predict": self._cfg.num_predict,

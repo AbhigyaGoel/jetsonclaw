@@ -49,9 +49,14 @@
     letter-spacing: .2em; color: var(--err); z-index: 3; }
   #conn.live { color: #6bffb0; }
   #sayform { border-top: 1px solid var(--dim); padding: 8px; }
-  #saybox { width: 100%; background: rgba(75,225,255,.05); border: 1px solid var(--dim);
+  #sayrow { display: flex; gap: 6px; }
+  #saybox { flex: 1; background: rgba(75,225,255,.05); border: 1px solid var(--dim);
     border-radius: 6px; color: var(--text); font: inherit; padding: 8px 10px; outline: none; }
   #saybox:focus { border-color: var(--core); }
+  #sayrow button { background: rgba(75,225,255,.05); border: 1px solid var(--dim);
+    border-radius: 6px; color: var(--text); font-size: 16px; padding: 0 12px; cursor: pointer; }
+  #micbtn.live { border-color: #6bffb0; box-shadow: 0 0 10px #6bffb066; }
+  #ttsbtn.on { border-color: var(--core); }
 </style>
 </head>
 <body>
@@ -66,8 +71,12 @@
       <h2>CONVERSATION</h2>
       <div class="feed" id="convo"></div>
       <form id="sayform">
-        <input id="saybox" type="text" autocomplete="off"
-               placeholder="type a command — same pipeline as voice">
+        <div id="sayrow">
+          <input id="saybox" type="text" autocomplete="off"
+                 placeholder="type or tap the mic — same pipeline as voice">
+          <button type="button" id="micbtn" title="speak a command">🎙</button>
+          <button type="button" id="ttsbtn" title="speak replies on this device">🔇</button>
+        </div>
       </form>
     </div>
     <div class="panel"><h2>AGENT ACTIVITY</h2><div class="feed" id="agent"></div></div>
@@ -156,6 +165,7 @@ function handle(ev) {
       } else {
         feedLine(convo, 'jarvis', d.text || '');
       }
+      speakLocal(d.text || '');
       break;
     case 'agent_start': feedLine(agentFeed, 'meta', `▶ ${d.kind}: ${d.task || ''}`); break;
     case 'agent_output':
@@ -182,15 +192,45 @@ function connect() {
 }
 connect();
 
+function send(text) {
+  if (text && ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ type: 'say', text }));
+}
+
 document.getElementById('sayform').addEventListener('submit', (e) => {
   e.preventDefault();
   const box = document.getElementById('saybox');
-  const text = box.value.trim();
-  if (text && ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'say', text }));
-    box.value = '';
-  }
+  send(box.value.trim()); box.value = '';
 });
+
+// Phone mic: on-device speech recognition -> same pipeline as the Jetson mic
+const micbtn = document.getElementById('micbtn');
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) micbtn.style.display = 'none';
+else micbtn.addEventListener('click', () => {
+  const rec = new SR();
+  rec.lang = 'en-US'; rec.interimResults = false;
+  micbtn.classList.add('live'); micbtn.textContent = '…';
+  rec.onresult = (e) => send(e.results[0][0].transcript.trim());
+  rec.onend = () => { micbtn.classList.remove('live'); micbtn.textContent = '🎙'; };
+  rec.onerror = rec.onend;
+  rec.start();
+});
+
+// Speak replies on this device (off by default — the Jetson may be talking too)
+const ttsbtn = document.getElementById('ttsbtn');
+let phoneTts = false;
+ttsbtn.addEventListener('click', () => {
+  phoneTts = !phoneTts;
+  ttsbtn.textContent = phoneTts ? '🔊' : '🔇';
+  ttsbtn.classList.toggle('on', phoneTts);
+});
+function speakLocal(text) {
+  if (!phoneTts || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-GB';
+  speechSynthesis.speak(u);
+}
 </script>
 </body>
 </html>
