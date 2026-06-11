@@ -55,6 +55,8 @@ class Jarvis:
         self._watch_seen: dict[str, str] = {}
         self._active_skill: str = ""  # last dynamic skill to handle an utterance
         self._active_until: float = 0.0
+        self._turn_t0: float | None = None  # set per turn; cleared on first reply
+        self._last_timing: dict[str, float] = {}
         self.claude = ClaudeBridge(cfg.claude)
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
@@ -176,7 +178,9 @@ class Jarvis:
     async def _handle_utterance(self, audio: np.ndarray) -> None:
         self.speaker.stop()  # wake word interrupts any ongoing speech
         self._set_state(State.TRANSCRIBING)
+        t0 = time.time()
         text = await asyncio.to_thread(self._transcriber.transcribe, audio)
+        self._last_timing["stt"] = time.time() - t0
         if not text:
             self.bus.publish(EventType.ERROR, message="no speech detected")
             self._set_state(State.IDLE)
@@ -190,6 +194,7 @@ class Jarvis:
         try:
             async with self._route_lock:
                 self._turn_replies = []
+                self._turn_t0 = time.time()
                 await self._route(text)
         except Exception as e:
             self.bus.publish(EventType.ERROR, message=f"{type(e).__name__}: {e}")
@@ -250,10 +255,11 @@ class Jarvis:
             query = intent.slots["query"]
             facts = await asyncio.to_thread(self.workspace.memory_lines, query)
             episodes = await asyncio.to_thread(self.episodes.search, query, 4)
-            if not facts and not episodes:
+            summaries = await asyncio.to_thread(self.episodes.search_summaries, query)
+            if not facts and not episodes and not summaries:
                 await self._respond(f"Nothing on file about {query}.")
                 return
-            context = "\n".join(facts + [ep.render() for ep in episodes])
+            context = "\n".join(facts + summaries + [ep.render() for ep in episodes])
             self._set_state(State.THINKING)
             await self._respond_stream(self.chat.stream_sentences(
                 f"Notes:\n{context}\n\nUsing only these notes, answer briefly: "
@@ -352,9 +358,15 @@ class Jarvis:
 
     # --- output ---
 
+    def _note_first_reply(self) -> None:
+        if self._turn_t0 is not None:
+            self._last_timing["reply"] = time.time() - self._turn_t0
+            self._turn_t0 = None
+
     async def _respond(self, text: str) -> None:
         if not text:
             text = "Done."
+        self._note_first_reply()
         self._turn_replies.append(text)
         words = text.split()
         block = len(words) <= 2 and bool(_WORDISH.match(text))
@@ -378,6 +390,8 @@ class Jarvis:
         try:
             async for sentence in sentences:
                 first = not spoken
+                if first:
+                    self._note_first_reply()
                 spoken.append(sentence)
                 self.bus.publish(EventType.RESPONSE, text=sentence, block=False,
                                  partial=not first)
@@ -420,9 +434,18 @@ class Jarvis:
                         break
         except OSError:
             pass
+        timing = ""
+        if self._last_timing:
+            stt = self._last_timing.get("stt")
+            reply = self._last_timing.get("reply")
+            parts = [f"speech to text {stt:.1f}s" if stt else "",
+                     f"first reply {reply:.1f}s" if reply else ""]
+            joined = ", ".join(p for p in parts if p)
+            if joined:
+                timing = f" Last turn: {joined}."
         return (f"Up {uptime}. {skills} skills loaded, {episodes} episodes on file, "
-                f"{facts} long-term facts.{ram} {disk_free_gb:.0f} gigs of disk. "
-                f"All systems nominal.")
+                f"{facts} long-term facts.{ram} {disk_free_gb:.0f} gigs of disk."
+                f"{timing} All systems nominal.")
 
     @staticmethod
     def _summarize_for_voice(result: str) -> str:

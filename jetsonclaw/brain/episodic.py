@@ -121,6 +121,21 @@ class EpisodicStore:
     def on_day(self, day: str) -> list[Episode]:
         return [ep for ep in self.all() if ep.day == day]
 
+    def search_summaries(self, query: str, limit: int = 4) -> list[str]:
+        """Matching lines from consolidated daily summaries (memory/DATE.md),
+        tagged with their date so temporal questions can be answered."""
+        words = _keywords(query)
+        if not words or not self.dir.is_dir():
+            return []
+        hits = []
+        for path in sorted(self.dir.glob("????-??-??.md"), reverse=True):
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                if line.strip().startswith("-") and words & _keywords(line):
+                    hits.append(f"[{path.stem}] {line.strip()}")
+                    if len(hits) >= limit:
+                        return hits
+        return hits
+
     def unconsolidated_days(self, now: float | None = None) -> list[str]:
         """Past days that have episodes but no memory/DATE.md summary yet."""
         now = time.time() if now is None else now

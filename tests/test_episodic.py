@@ -82,3 +82,16 @@ def test_working_memory_capped_at_max_turns(tmp_path):
     turns = store.recent_turns(now=NOW)
     assert len(turns) == store.WORKING_MAX_TURNS
     assert turns[-1].user == "q9"
+
+
+def test_search_summaries(tmp_path):
+    store = EpisodicStore(tmp_path / "memory")
+    store.dir.mkdir(parents=True)
+    (store.dir / "2026-06-09.md").write_text(
+        "# 2026-06-09\n\n## Summary\n- discussed the dentist appointment\n- played jazz\n")
+    (store.dir / "2026-06-10.md").write_text(
+        "# 2026-06-10\n\n## Summary\n- talked about guitar strings\n")
+    hits = store.search_summaries("dentist")
+    assert len(hits) == 1
+    assert hits[0].startswith("[2026-06-09]")
+    assert store.search_summaries("zebra") == []
