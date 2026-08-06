@@ -13,6 +13,29 @@ the harness commits, tests, and restarts it. Keep changes minimal and focused.
 - Python 3.10 syntax only (no `tomllib` without the tomli fallback, no 3.11+ features)
 - Keep files small and focused; defer heavy imports (model loads) out of module top-level
 
+## Billing and auth (non-negotiable)
+
+REMY authenticates to Claude via the owner's subscription through the Claude Code
+CLI. `claude-agent-sdk` subprocesses that same CLI and inherits that auth; it is
+not the Anthropic Messages API client and introduces no per-token billing.
+
+- No code path, systemd unit, shell profile, or container env may set
+  `ANTHROPIC_API_KEY`. `--doctor` must assert it is unset and fail loudly if not.
+- The model-invocation boundary stays behind one interface. Anthropic paused a
+  billing change on 2026-06-15 that would have moved `claude -p` and Agent SDK
+  usage off subscription limits onto a separate monthly credit; it may return in
+  some form. Swapping to API-key billing must be a config change, never a
+  rearchitecture.
+- Milestone zero, before any capability work: a cost ledger. Parse token usage
+  from the `result` line of `stream-json`, persist per-session cost, and expose
+  it via "status report" and the dashboard. Every later milestone reports its
+  measured cost per run.
+- Long detached jobs consume far more than today's utterances. Token and
+  wall-clock budgets are enforced by the overseer, not advisory. A job that
+  exceeds budget cancels and reports.
+- Anything qwen2.5:3b can resolve locally never reaches Claude. Treat the tiered
+  local router as a cost control, not a latency optimization.
+
 ## Architecture
 
 - `remy/events.py` — async EventBus; every component publishes here, TUI + web UI subscribe

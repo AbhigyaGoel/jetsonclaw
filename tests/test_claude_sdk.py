@@ -75,8 +75,10 @@ class _Assistant:
 
 
 class _Result:
-    def __init__(self, result="", is_error=False, session_id=""):
+    def __init__(self, result="", is_error=False, session_id="",
+                 total_cost_usd=None, usage=None):
         self.result, self.is_error, self.session_id = result, is_error, session_id
+        self.total_cost_usd, self.usage = total_cost_usd, usage
 
 
 def _map(msg):
@@ -103,6 +105,15 @@ def test_map_result_error():
     lines = _map(_Result(result="boom", is_error=True))
     assert lines[-1].kind == "error"
     assert "boom" in lines[-1].text
+
+
+def test_map_result_carries_cost():
+    lines = _map(_Result(result="done", session_id="abc", total_cost_usd=0.5,
+                         usage={"input_tokens": 10, "output_tokens": 3}))
+    result = lines[-1]
+    assert result.kind == "result"
+    assert result.cost_usd == 0.5
+    assert result.usage["input_tokens"] == 10
 
 
 def test_smoke_sdk_imports_when_present():

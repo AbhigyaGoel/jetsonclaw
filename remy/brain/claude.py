@@ -23,10 +23,32 @@ from ..config import ClaudeConfig
 class AgentLine:
     """One streamed progress item from a running agent session."""
 
-    def __init__(self, kind: str, text: str) -> None:
+    def __init__(self, kind: str, text: str, *, usage: dict | None = None,
+                 cost_usd: float | None = None, session_id: str = "") -> None:
         # "text" | "tool" | "result" | "error" | "session" (session id, once)
         self.kind = kind
         self.text = text
+        # set on the result line: the subscription-billed cost the CLI reports
+        self.usage = usage
+        self.cost_usd = cost_usd
+        self.session_id = session_id
+
+
+def record_usage(ledger, line: "AgentLine", task: str, *,
+                 now: float | None = None) -> None:
+    """Persist a session's cost to the ledger from its result line. No-op when
+    there's no ledger or no cost (e.g. a session that never reached a result)."""
+    if ledger is None or line.cost_usd is None:
+        return
+    usage = line.usage or {}
+    ledger.record(
+        cost_usd=line.cost_usd,
+        task=task,
+        session_id=line.session_id,
+        input_tokens=int(usage.get("input_tokens", 0)),
+        output_tokens=int(usage.get("output_tokens", 0)),
+        now=now,
+    )
 
 
 class AgentBridge(Protocol):
@@ -65,20 +87,22 @@ def write_agent_settings(cfg: ClaudeConfig) -> Path | None:
     return path
 
 
-def make_bridge(cfg: ClaudeConfig) -> AgentBridge:
+def make_bridge(cfg: ClaudeConfig, ledger=None) -> AgentBridge:
     """Pick the agent engine. Defaults to the raw CLI until the SDK path has
-    been validated on-box (ADR 0001)."""
+    been validated on-box (ADR 0001). `ledger` (CostLedger) records per-session
+    spend for whichever engine runs."""
     if cfg.engine == "sdk":
         from .claude_sdk import ClaudeSDKBridge
-        return ClaudeSDKBridge(cfg)
-    return ClaudeBridge(cfg)
+        return ClaudeSDKBridge(cfg, ledger=ledger)
+    return ClaudeBridge(cfg, ledger=ledger)
 
 
 class ClaudeBridge:
     """Engine "cli": `claude -p` subprocess, no shell — injection-safe."""
 
-    def __init__(self, cfg: ClaudeConfig) -> None:
+    def __init__(self, cfg: ClaudeConfig, ledger=None) -> None:
         self._cfg = cfg
+        self._ledger = ledger
         self._settings_written = False
 
     def available(self) -> bool:
@@ -147,6 +171,8 @@ class ClaudeBridge:
                     break
                 line = self._parse(raw)
                 if line is not None:
+                    if line.kind in ("result", "error"):
+                        record_usage(self._ledger, line, prompt)
                     if line.kind == "result":
                         got_result = True
                     yield line
@@ -187,7 +213,12 @@ class ClaudeBridge:
             if texts:
                 return AgentLine("text", " ".join(texts))
         elif kind == "result":
+            usage = msg.get("usage") if isinstance(msg.get("usage"), dict) else None
+            cost = msg.get("total_cost_usd")
+            sid = str(msg.get("session_id", ""))
             if msg.get("is_error"):
-                return AgentLine("error", str(msg.get("result", "unknown error"))[:500])
-            return AgentLine("result", str(msg.get("result", "")).strip())
+                return AgentLine("error", str(msg.get("result", "unknown error"))[:500],
+                                 usage=usage, cost_usd=cost, session_id=sid)
+            return AgentLine("result", str(msg.get("result", "")).strip(),
+                             usage=usage, cost_usd=cost, session_id=sid)
         return None

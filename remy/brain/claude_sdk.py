@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from ..config import ClaudeConfig
-from .claude import AgentLine, settings_path, write_agent_settings
+from .claude import AgentLine, record_usage, settings_path, write_agent_settings
 
 
 def _sdk_available() -> bool:
@@ -31,8 +31,9 @@ def _sdk_available() -> bool:
 
 
 class ClaudeSDKBridge:
-    def __init__(self, cfg: ClaudeConfig) -> None:
+    def __init__(self, cfg: ClaudeConfig, ledger=None) -> None:
         self._cfg = cfg
+        self._ledger = ledger
         self._settings_written = False
 
     def available(self) -> bool:
@@ -132,6 +133,8 @@ class ClaudeSDKBridge:
                             if session_seen:
                                 continue
                             session_seen = True
+                        if line.kind in ("result", "error"):
+                            record_usage(self._ledger, line, prompt)
                         if line.kind == "result":
                             got_result = True
                         yield line
@@ -163,12 +166,17 @@ class ClaudeSDKBridge:
             sid = getattr(msg, "session_id", "") or ""
             if sid:
                 lines.append(AgentLine("session", sid))
+            usage = getattr(msg, "usage", None)
+            usage = usage if isinstance(usage, dict) else None
+            cost = getattr(msg, "total_cost_usd", None)
             if getattr(msg, "is_error", False):
                 lines.append(AgentLine(
-                    "error", str(getattr(msg, "result", "") or "unknown error")[:500]))
+                    "error", str(getattr(msg, "result", "") or "unknown error")[:500],
+                    usage=usage, cost_usd=cost, session_id=sid))
             else:
                 lines.append(AgentLine(
-                    "result", str(getattr(msg, "result", "") or "").strip()))
+                    "result", str(getattr(msg, "result", "") or "").strip(),
+                    usage=usage, cost_usd=cost, session_id=sid))
         return lines
 
 

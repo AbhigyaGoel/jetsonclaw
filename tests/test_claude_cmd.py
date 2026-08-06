@@ -65,3 +65,17 @@ def test_mcp_config_passthrough():
 def test_system_append_included():
     cmd = bridge().build_cmd("task", system_append="persona here")
     assert cmd[cmd.index("--append-system-prompt") + 1] == "persona here"
+
+
+def test_parse_result_extracts_cost_and_session():
+    import json
+    raw = json.dumps({
+        "type": "result", "result": "done", "total_cost_usd": 0.37,
+        "usage": {"input_tokens": 120, "output_tokens": 40},
+        "session_id": "sess-42",
+    }).encode()
+    line = ClaudeBridge._parse(raw)
+    assert line.kind == "result"
+    assert line.cost_usd == 0.37
+    assert line.session_id == "sess-42"
+    assert line.usage["output_tokens"] == 40

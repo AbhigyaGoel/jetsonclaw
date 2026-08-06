@@ -119,7 +119,7 @@ Copy [config.example.toml](config.example.toml) to `~/.remy/config.toml`. Assist
 
 ## Cost
 
-Wake word, STT, TTS, chat, Spotify, and skills run locally and cost nothing. Agent tasks draw from the Agent SDK credit included in Claude subscriptions (about $100/month equivalent on Max 5x as of mid 2026).
+Wake word, STT, TTS, chat, Spotify, and skills run locally and cost nothing. Agent tasks run through the Claude Code CLI and draw from the owner's Claude subscription usage limits — no per-token API billing. (Anthropic paused a 2026-06-15 change that would have moved this onto a separate Agent SDK credit; REMY logs real per-session cost to a ledger, surfaced in the status report, so the actual spend is measured, not guessed.) Never set `ANTHROPIC_API_KEY` — it silently switches Claude Code to pay-as-you-go; `--doctor` checks it's unset.
 
 ## License
 

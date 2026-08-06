@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Billing/auth guardrails + cost ledger
+
+- cost ledger (`remy/cost.py`): parses `total_cost_usd`/`usage`/`session_id` from
+  the agent `result` line (both engines) and persists one row per session to
+  `~/.remy/cost.jsonl`; surfaced in the spoken/dashboard status report. Measures
+  real agent spend on the subscription (free to record) instead of guessing.
+- `--doctor` now asserts `ANTHROPIC_API_KEY` is unset — a core check that fails
+  loudly, because a set key silently switches Claude Code to pay-as-you-go
+  billing instead of the subscription.
+- CLAUDE.md gains a non-negotiable "Billing and auth" section; README/design docs
+  corrected to reflect subscription-backed billing (the 2026-06-15 separate-credit
+  change was paused, may return; the model-invocation boundary stays swappable).
+
 ## Unreleased — Capability Program M3 (detached job engine, core)
 
 - new `remy/jobs/`: the sqlite job table + state machine + crash-recovery sweep

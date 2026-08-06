@@ -47,3 +47,16 @@ in the same milestone. Bash and long unattended sessions do not land before the
 sandbox and the watchdog that bound them. The roadmap is sequenced to honor
 this, which is why the first two milestones buy no new demo - they are the
 floor the demos stand on.
+
+## Billing and auth (non-negotiable)
+
+The economic model rides on staying subscription-backed. `claude-agent-sdk`
+subprocesses the same `claude` CLI REMY already uses and inherits the same
+subscription auth - it is not the Anthropic Messages API client and adds no
+per-token billing. Anthropic paused a 2026-06-15 change that would have moved
+`claude -p`/SDK usage onto a separate monthly credit; it may return, so the
+model-invocation boundary stays behind one interface and any switch to API-key
+billing is a config change, never a rearchitecture. `ANTHROPIC_API_KEY` must
+never be set (it silently bills pay-as-you-go; `--doctor` asserts it). Cost is
+measured from the `stream-json` result line into a ledger (`remy/cost.py`), not
+guessed. Full text in `CLAUDE.md`.

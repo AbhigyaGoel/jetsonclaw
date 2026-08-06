@@ -100,6 +100,14 @@ def run_doctor(cfg: Config) -> int:
                           "run `claude setup-token` on a machine with a browser, "
                           "put it in ~/.remy/env and ~/.bashrc"))
 
+    # BILLING FOOTGUN: if ANTHROPIC_API_KEY is set, Claude Code silently bills
+    # pay-as-you-go instead of the subscription. This must be unset. Core check.
+    no_api_key = not os.environ.get("ANTHROPIC_API_KEY")
+    results.append(_check("no ANTHROPIC_API_KEY (subscription billing)", no_api_key,
+                          "unset" if no_api_key else "SET — will bill pay-as-you-go!",
+                          "unset ANTHROPIC_API_KEY everywhere (shell profile, "
+                          "systemd unit, ~/.remy/env); REMY bills the subscription"))
+
     # agent engine — only gate on the SDK when it's actually selected
     if cfg.claude.engine == "sdk":
         try:

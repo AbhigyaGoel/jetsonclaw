@@ -21,6 +21,7 @@ from .brain.claude import make_bridge
 from .brain.episodic import Consolidator, EpisodicStore
 from .brain.chat import ChatBrain
 from .config import Config
+from .cost import CostLedger
 from .events import EventBus, EventType, State
 from .router.intents import Intent, is_affirmation, is_negation, parse
 from .skills.loader import SkillLoader
@@ -58,7 +59,10 @@ class Jarvis:
         self._turn_t0: float | None = None  # set per turn; cleared on first reply
         self._last_timing: dict[str, float] = {}
         self._brief_pending = False  # next utterance is a long-form agent brief
-        self.claude = make_bridge(cfg.claude)
+        # Measure agent spend from the start — it's free to record on the
+        # subscription and turns "how long would $250 last" into a real number.
+        self.cost = CostLedger(self.workspace.root / "cost.jsonl")
+        self.claude = make_bridge(cfg.claude, ledger=self.cost)
         # Write the agent's deny-list settings up front so the very first session
         # cannot Read the secret stores (containment before capability).
         self.claude.write_settings()
@@ -531,9 +535,12 @@ class Jarvis:
             joined = ", ".join(p for p in parts if p)
             if joined:
                 timing = f" Last turn: {joined}."
+        spend = ""
+        if self.cost.count():
+            spend = f" Agent spend: {self.cost.summary()}"
         return (f"Up {uptime}. {skills} skills loaded, {episodes} episodes on file, "
                 f"{facts} long-term facts.{ram} {disk_free_gb:.0f} gigs of disk."
-                f"{timing} All systems nominal.")
+                f"{timing}{spend} All systems nominal.")
 
     @staticmethod
     def _summarize_for_voice(result: str) -> str:
