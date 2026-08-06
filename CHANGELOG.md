@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — Capability Program M1 (Agent SDK, scaffolding)
+
+- second agent engine behind the existing `AgentLine` interface: `[claude]
+  engine = "sdk"` drives `claude-agent-sdk`'s `ClaudeSDKClient` (resume-by-id,
+  mid-session input, per-call gating); `engine = "cli"` (default) is unchanged
+- session id is surfaced as an `AgentLine(kind="session")` so a future job runner
+  can persist it and resume after a restart; both engines gained a `resume=<id>`
+  path (CLI `--resume`, SDK `resume=`)
+- the M0 deny-list settings file is reused by the SDK engine (`settings=`)
+- `--doctor` gates on the SDK only when it's the selected engine; `--selftest`
+  covers option/message mapping without requiring the package installed
+- new optional extra `.[sdk]`; not a hard dependency
+- ON-BOX GATE (not yet done): benchmark SDK session RSS + cold-start vs the CLI,
+  and verify `resume=<id>` re-attaches across a REMY restart, before the CLI
+  fallback is removed
+
 ## Unreleased — Capability Program M0 (safety rails)
 
 - Piper runs out-of-process: REMY execs the `piper` binary and streams its audio

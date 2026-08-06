@@ -15,7 +15,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..brain.claude import ClaudeBridge
+from ..brain.claude import AgentBridge
 from ..events import EventBus, EventType
 from ..redact import redact
 from ..supervisor import BootGuard, _git
@@ -80,7 +80,7 @@ def append_evolution(journal: Path, instruction: str, outcome: str,
 
 
 class SelfIterateSkill:
-    def __init__(self, bridge: ClaudeBridge, guard: BootGuard,
+    def __init__(self, bridge: AgentBridge, guard: BootGuard,
                  repo_dir: str | Path, bus: EventBus,
                  skills_dir: str | Path | None = None) -> None:
         self._bridge = bridge

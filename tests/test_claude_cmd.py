@@ -45,6 +45,17 @@ def test_continue_session_flag():
     assert "--continue" in bridge().build_cmd("keep going", continue_session=True)
 
 
+def test_resume_by_id_flag():
+    cmd = bridge().build_cmd("keep going", resume="sid-123")
+    assert cmd[cmd.index("--resume") + 1] == "sid-123"
+
+
+def test_resume_beats_continue():
+    cmd = bridge().build_cmd("go", continue_session=True, resume="sid-9")
+    assert "--resume" in cmd
+    assert "--continue" not in cmd
+
+
 def test_mcp_config_passthrough():
     cmd = bridge(mcp_config="~/mcp.json").build_cmd("task")
     assert "--mcp-config" in cmd

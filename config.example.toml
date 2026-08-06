@@ -39,6 +39,8 @@ num_predict = 150
 [claude]
 workdir = "~/remy"       # where agent tasks run by default
 timeout_secs = 600
+# engine = "cli"                 # "cli" (claude -p) or "sdk" (claude-agent-sdk:
+#                                # resume-by-id, mid-session input, per-call gating)
 permission_mode = "acceptEdits"
 allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept the risk
 confirm_tasks = true           # require a spoken "yes" before agent tasks run

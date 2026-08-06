@@ -1,9 +1,12 @@
-"""Agentic brain: headless Claude Code CLI sessions.
+"""Agentic brain: headless Claude Code sessions.
 
-Runs `claude -p` as an argv subprocess (no shell — injection-safe) with
-stream-json output so the UI can show live progress. Auth comes from the
-user's Claude subscription (one-time `claude setup-token` ->
-CLAUDE_CODE_OAUTH_TOKEN) — no per-token API billing.
+Two engines behind one `AgentLine` interface, chosen by `claude.engine`:
+- "cli" (default): spawn `claude -p` as an argv subprocess and parse stream-json.
+- "sdk": drive `ClaudeSDKClient` from the claude-agent-sdk (see claude_sdk.py),
+  which adds resume-by-id, mid-session input, interrupt, and per-call gating.
+
+Auth for both comes from the owner's Claude subscription (one-time
+`claude setup-token` -> CLAUDE_CODE_OAUTH_TOKEN) — no per-token API billing.
 """
 
 from __future__ import annotations
@@ -12,7 +15,7 @@ import asyncio
 import json
 import shutil
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Protocol
 
 from ..config import ClaudeConfig
 
@@ -21,8 +24,21 @@ class AgentLine:
     """One streamed progress item from a running agent session."""
 
     def __init__(self, kind: str, text: str) -> None:
-        self.kind = kind  # "text" | "tool" | "result" | "error"
+        # "text" | "tool" | "result" | "error" | "session" (session id, once)
+        self.kind = kind
         self.text = text
+
+
+class AgentBridge(Protocol):
+    """The shape app.py and selfiterate depend on, regardless of engine."""
+
+    def available(self) -> bool: ...
+
+    def write_settings(self) -> Path | None: ...
+
+    def run(self, prompt: str, workdir: str | Path | None = None,
+            system_append: str | None = None, continue_session: bool = False,
+            resume: str | None = None) -> AsyncIterator[AgentLine]: ...
 
 
 def deny_settings(cfg: ClaudeConfig) -> dict:
@@ -30,7 +46,37 @@ def deny_settings(cfg: ClaudeConfig) -> dict:
     return {"permissions": {"deny": [f"Read({p})" for p in cfg.deny_read]}}
 
 
+def settings_path(cfg: ClaudeConfig) -> Path:
+    return Path(cfg.agent_settings_file).expanduser()
+
+
+def write_agent_settings(cfg: ClaudeConfig) -> Path | None:
+    """Persist the deny rules to the managed settings file (0600). Idempotent.
+    Shared by both engines so the deny-list holds whichever one runs."""
+    if not cfg.deny_read:
+        return None
+    path = settings_path(cfg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(deny_settings(cfg), indent=2), encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    return path
+
+
+def make_bridge(cfg: ClaudeConfig) -> AgentBridge:
+    """Pick the agent engine. Defaults to the raw CLI until the SDK path has
+    been validated on-box (ADR 0001)."""
+    if cfg.engine == "sdk":
+        from .claude_sdk import ClaudeSDKBridge
+        return ClaudeSDKBridge(cfg)
+    return ClaudeBridge(cfg)
+
+
 class ClaudeBridge:
+    """Engine "cli": `claude -p` subprocess, no shell — injection-safe."""
+
     def __init__(self, cfg: ClaudeConfig) -> None:
         self._cfg = cfg
         self._settings_written = False
@@ -39,32 +85,25 @@ class ClaudeBridge:
         return shutil.which(self._cfg.binary) is not None
 
     def settings_path(self) -> Path:
-        return Path(self._cfg.agent_settings_file).expanduser()
+        return settings_path(self._cfg)
 
     def write_settings(self) -> Path | None:
-        """Persist the deny rules to the managed --settings file. Idempotent."""
-        if not self._cfg.deny_read:
-            return None
-        path = self.settings_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(deny_settings(self._cfg), indent=2),
-                        encoding="utf-8")
-        try:
-            path.chmod(0o600)
-        except OSError:
-            pass
-        self._settings_written = True
+        path = write_agent_settings(self._cfg)
+        self._settings_written = path is not None
         return path
 
     def build_cmd(self, prompt: str, system_append: str | None = None,
-                  continue_session: bool = False) -> list[str]:
+                  continue_session: bool = False,
+                  resume: str | None = None) -> list[str]:
         cmd = [
             self._cfg.binary, "-p", prompt,
             "--output-format", "stream-json", "--verbose",
             "--permission-mode", self._cfg.permission_mode,
             "--allowedTools", self._cfg.allowed_tools,
         ]
-        if continue_session:
+        if resume:
+            cmd += ["--resume", resume]  # resume a specific session by id
+        elif continue_session:
             cmd.append("--continue")  # resume the most recent session in workdir
         if self._cfg.deny_read:
             cmd += ["--settings", str(self.settings_path())]
@@ -76,7 +115,8 @@ class ClaudeBridge:
 
     async def run(self, prompt: str, workdir: str | Path | None = None,
                   system_append: str | None = None,
-                  continue_session: bool = False) -> AsyncIterator[AgentLine]:
+                  continue_session: bool = False,
+                  resume: str | None = None) -> AsyncIterator[AgentLine]:
         """Run one headless session, yielding progress lines. The final yielded
         line has kind='result' (or 'error')."""
         if not self.available():
@@ -91,7 +131,7 @@ class ClaudeBridge:
                 self.write_settings()
             except OSError:
                 pass
-        cmd = self.build_cmd(prompt, system_append, continue_session)
+        cmd = self.build_cmd(prompt, system_append, continue_session, resume)
 
         proc = await asyncio.create_subprocess_exec(
             *cmd, cwd=str(cwd),

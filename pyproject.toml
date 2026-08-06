@@ -31,6 +31,10 @@ dependencies = [
 # The remy/licensing.py guard fails --selftest if a GPL piper-tts is installed.
 [project.optional-dependencies]
 dev = ["ruff>=0.4"]
+# Agent SDK engine (ADR 0001). Optional until validated on-box; the CLI engine
+# is the default. On the Jetson: `pip install -e .[sdk]`, then set
+# [claude] engine = "sdk". The aarch64 wheel bundles the claude binary.
+sdk = ["claude-agent-sdk>=0.2"]
 
 [project.scripts]
 remy = "remy.__main__:main"

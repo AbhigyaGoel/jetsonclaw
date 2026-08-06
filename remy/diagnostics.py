@@ -100,6 +100,16 @@ def run_doctor(cfg: Config) -> int:
                           "run `claude setup-token` on a machine with a browser, "
                           "put it in ~/.remy/env and ~/.bashrc"))
 
+    # agent engine — only gate on the SDK when it's actually selected
+    if cfg.claude.engine == "sdk":
+        try:
+            import claude_agent_sdk  # noqa: F401
+            sdk_ok, sdk_detail = True, "sdk"
+        except Exception:
+            sdk_ok, sdk_detail = False, "claude-agent-sdk not importable"
+        results.append(_check("agent engine (sdk)", sdk_ok, sdk_detail,
+                              "pip install claude-agent-sdk (or set [claude] engine = \"cli\")"))
+
     # spotify (optional)
     spotify = Path(cfg.spotify.token_file).expanduser().is_file()
     _check("spotify (optional)", spotify, "" if spotify else "not linked",

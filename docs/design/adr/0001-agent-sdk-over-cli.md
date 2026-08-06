@@ -1,6 +1,6 @@
 # ADR 0001: Drive Claude with the Agent SDK, not a hand-rolled CLI subprocess
 
-Status: proposed
+Status: accepted — scaffolding landed 2026-08-06 (M1); on-box benchmark gate pending
 Date: 2026-08-06
 
 ## Context

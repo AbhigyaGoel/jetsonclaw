@@ -17,7 +17,7 @@ import numpy as np
 from .audio.capture import CaptureLoop
 from .audio.stt import Transcriber
 from .audio.tts import Speaker
-from .brain.claude import ClaudeBridge
+from .brain.claude import make_bridge
 from .brain.episodic import Consolidator, EpisodicStore
 from .brain.chat import ChatBrain
 from .config import Config
@@ -58,7 +58,7 @@ class Jarvis:
         self._turn_t0: float | None = None  # set per turn; cleared on first reply
         self._last_timing: dict[str, float] = {}
         self._brief_pending = False  # next utterance is a long-form agent brief
-        self.claude = ClaudeBridge(cfg.claude)
+        self.claude = make_bridge(cfg.claude)
         # Write the agent's deny-list settings up front so the very first session
         # cannot Read the secret stores (containment before capability).
         self.claude.write_settings()

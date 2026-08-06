@@ -84,6 +84,10 @@ class ClaudeConfig:
     binary: str = "claude"
     workdir: str = "~/remy"
     timeout_secs: float = 600.0
+    # "cli" (spawn `claude -p`) or "sdk" (claude-agent-sdk: resume-by-id,
+    # mid-session input, per-call gating). Stays "cli" until the SDK path is
+    # validated on-box (ADR 0001).
+    engine: str = "cli"
     # No Bash by default — a misheard voice command must not be able to run
     # arbitrary shell. Add ",Bash" here if you accept that tradeoff.
     # Web tools let synthesis sessions read real API docs.
