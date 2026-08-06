@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import re
 import sys
+from html import escape
 
 from . import (
     CLAWD,
@@ -72,7 +73,8 @@ GALLERY = [
 ]
 
 
-def _strip(s: str) -> str:
+def _strip_sgr(s: str) -> str:
+    """Remove SGR color codes for plain-text display. Not a security control."""
     return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
 
@@ -81,7 +83,7 @@ def _terminal_demo(plain: bool = False) -> str:
     blocks = [_terminal.encode(banner(theme, "one framework · every shape"), theme), ""]
     for spec in GALLERY:
         panel = to_terminal(spec, theme)
-        blocks.append(_strip(panel) if plain else panel)
+        blocks.append(_strip_sgr(panel) if plain else panel)
         says = to_speech(spec)
         line = f"  ↳ says: “{says}”"
         blocks.append(line if plain else f"\x1b[38;2;138;133;120m{line}\x1b[0m")
@@ -98,7 +100,7 @@ def _html_demo() -> str:
             "<div>"
             f"{to_html(spec, theme)}"
             f"<div style=\"color:#8a8578;font:13px ui-monospace,monospace;"
-            f"padding:6px 4px 0\">↳ says: “{says}”</div>"
+            f"padding:6px 4px 0\">↳ says: “{escape(says)}”</div>"
             "</div>"
         )
     inner = "\n".join(parts)

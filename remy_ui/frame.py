@@ -14,8 +14,13 @@ from __future__ import annotations
 
 from typing import Sequence
 
-from .segment import Row, Segment, content_width, seg, visible_width
+from .segment import Row, content_width, seg, visible_width
+from .text import cell_width, truncate
 from .theme import Theme
+
+# A single title can't widen the panel past this many cells, so a runaway
+# string caps the box instead of wrapping the terminal.
+_TITLE_MAX = 48
 
 
 def _pad_row(content: Row, field_width: int, pad: int, vertical: str) -> Row:
@@ -45,9 +50,10 @@ def frame(
     g = theme.glyphs
     accent = theme.palette.accent
     pad = theme.pad
+    title = truncate(title, _TITLE_MAX)
 
-    # Visible width of the decorated title: dash + space + ✻ + space + title + space.
-    prefix_visible = len(title) + 5
+    # Cells the decorated title occupies: "─ " + ✻ + " " + title + " ".
+    prefix_visible = cell_width(g.horizontal + " ") + cell_width(g.sparkle) + 1 + cell_width(title) + 1
     inner_span = max(content_width(rows) + 2 * pad, prefix_visible + 1, min_width)
     field_width = inner_span - 2 * pad
     dashes_after = inner_span - prefix_visible

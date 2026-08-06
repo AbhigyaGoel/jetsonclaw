@@ -1,36 +1,20 @@
-"""The race-bar widget: head-to-head percentage bars.
+"""The race-bar widget: head-to-head bars.
 
-This is the widget behind "Abdul vs Stevens, live." It renders each entry
-as a labeled block bar sized to its share of the total, with the value on
-the right. While data is loading it draws a dim skeleton in the same
-footprint so the panel appears instantly and fills in when the fetch lands.
+Renders each entry as a labeled block bar sized to its share of the total,
+with the value on the right. While data is loading it draws a dim skeleton in
+the same footprint, so the panel appears instantly and fills in when the fetch
+lands.
 """
 
 from __future__ import annotations
 
-from typing import Sequence
-
 from ..numfmt import human
-from ..segment import Row, blank, seg
+from ..segment import Row, bar, blank, seg
 from ..spec import Entry, RaceBar
+from ..text import cell_width, pad, truncate
 from ..theme import Theme, series_color
 
-
-def _label_width(entries: Sequence[Entry]) -> int:
-    """Align all bars by padding labels to the longest one."""
-
-    return max(len(e.label) for e in entries)
-
-
-def _bar(fraction: float, width: int, color, theme: Theme) -> tuple:
-    """A block bar: filled cells in `color`, remainder as a dim track."""
-
-    filled = round(max(0.0, min(1.0, fraction)) * width)
-    g = theme.glyphs
-    return (
-        seg(g.bar_full * filled, color),
-        seg(g.bar_empty * (width - filled), None, dim=True),
-    )
+_LABEL_MAX = 32   # cap a single label so a long title can't blow out the row
 
 
 def _format_value(entry: Entry, spec: RaceBar) -> str:
@@ -46,7 +30,7 @@ def _format_value(entry: Entry, spec: RaceBar) -> str:
 
 
 def _entry_row(
-    index: int, entry: Entry, spec: RaceBar, label_w: int, theme: Theme
+    index: int, entry: Entry, label: str, spec: RaceBar, label_w: int, theme: Theme
 ) -> Row:
     """One line: label, bar, value."""
 
@@ -56,16 +40,13 @@ def _entry_row(
     else:
         fraction = entry.value / spec.total
 
-    label = seg(entry.label.ljust(label_w), theme.palette.text)
-    value_text = _format_value(entry, spec)
     value_color = theme.palette.muted if entry.value is None else color
-
     return (
-        label,
+        seg(pad(label, label_w), theme.palette.text),
         seg("  "),
-        *_bar(fraction, theme.bar_width, color, theme),
+        *bar(fraction, theme.bar_width, color, theme),
         seg("  "),
-        seg(value_text, value_color, bold=entry.value is not None),
+        seg(_format_value(entry, spec), value_color, bold=entry.value is not None),
     )
 
 
@@ -75,15 +56,16 @@ def build(spec: object, theme: Theme) -> list[Row]:
     if not isinstance(spec, RaceBar):
         raise TypeError(f"race_bar.build expected RaceBar, got {type(spec).__name__}")
 
-    label_w = _label_width(spec.entries)
+    labels = [truncate(e.label, _LABEL_MAX) for e in spec.entries]
+    label_w = max(cell_width(lbl) for lbl in labels)
     rows: list[Row] = [
-        _entry_row(i, e, spec, label_w, theme) for i, e in enumerate(spec.entries)
+        _entry_row(i, e, labels[i], spec, label_w, theme)
+        for i, e in enumerate(spec.entries)
     ]
 
     if spec.note:
         rows.append(blank())
-        color = theme.palette.muted
         marker = theme.glyphs.sparkle if not spec.is_loading else "⋯"
-        rows.append((seg(f"{marker} {spec.note}", color, dim=True),))
+        rows.append((seg(f"{marker} {spec.note}", theme.palette.muted, dim=True),))
 
     return rows

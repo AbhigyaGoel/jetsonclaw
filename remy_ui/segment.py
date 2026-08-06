@@ -10,9 +10,11 @@ Everything here is immutable: a Segment is frozen, a Row is a tuple.
 
 from __future__ import annotations
 
+import math
 from typing import NamedTuple, Optional, Sequence
 
-from .theme import Color
+from .text import cell_width
+from .theme import Color, Theme
 
 
 class Segment(NamedTuple):
@@ -47,16 +49,28 @@ def blank() -> Row:
 
 
 def visible_width(r: Row) -> int:
-    """The printed width of a row, ignoring styling.
+    """The printed width of a row in terminal cells, ignoring styling."""
 
-    Assumes one cell per character. The box-drawing, block, and sparkle
-    glyphs we use are all single-width, so this holds for our widgets.
-    """
-
-    return sum(len(s.text) for s in r)
+    return sum(cell_width(s.text) for s in r)
 
 
 def content_width(rows: Sequence[Row]) -> int:
     """Widest visible row in a block, used to size boxes."""
 
     return max((visible_width(r) for r in rows), default=0)
+
+
+def bar(fraction: float, width: int, color: Optional[Color], theme: Theme) -> Row:
+    """A block bar: filled cells in `color`, the remainder a dim track.
+
+    Clamps to [0, 1] and treats a non-finite fraction (NaN/inf from bad data)
+    as empty, so a garbage value renders a blank bar instead of crashing.
+    """
+
+    frac = fraction if math.isfinite(fraction) else 0.0
+    filled = round(max(0.0, min(1.0, frac)) * width)
+    g = theme.glyphs
+    return (
+        seg(g.bar_full * filled, color),
+        seg(g.bar_empty * (width - filled), None, dim=True),
+    )

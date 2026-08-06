@@ -20,7 +20,9 @@ from .spec import Gauge, Ranking, RaceBar, Series, Status, Value
 def _comparison(spec: RaceBar) -> str:
     if spec.is_loading:
         return f"Still waiting on {spec.title}."
-    ranked = sorted(spec.entries, key=lambda e: e.value or 0, reverse=True)
+    ranked = sorted(
+        spec.entries, key=lambda e: e.value if e.value is not None else -1, reverse=True
+    )
     lead, second = ranked[0], ranked[1]
     if spec.as_percent and spec.total > 0:
         lp = lead.value / spec.total * 100
@@ -34,8 +36,8 @@ def _value(spec: Value) -> str:
         return f"No reading yet for {spec.title}."
     unit = f" {spec.unit}" if spec.unit else ""
     base = f"{spec.title}: {spoken(spec.value)}{unit}"
-    if spec.delta:
-        direction = "up" if spec.delta > 0 else "down"
+    if spec.delta is not None:
+        direction = "up" if spec.delta > 0 else "down" if spec.delta < 0 else "flat"
         return f"{base}, {direction} {spoken(abs(spec.delta))}."
     return f"{base}."
 
@@ -56,8 +58,8 @@ def _ranking(spec: Ranking) -> str:
 
 
 def _status(spec: Status) -> str:
-    detail = f" {spec.detail}" if spec.detail else ""
-    return f"{spec.title}: {spec.state}.{detail}"
+    detail = f", {spec.detail}" if spec.detail else ""
+    return f"{spec.title}: {spec.state}{detail}."
 
 
 def _gauge(spec: Gauge) -> str:

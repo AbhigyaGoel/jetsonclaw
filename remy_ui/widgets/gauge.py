@@ -7,7 +7,7 @@ bar, filled to the fraction of target, with the readout on the right.
 from __future__ import annotations
 
 from ..numfmt import human
-from ..segment import Row, seg
+from ..segment import Row, bar, seg
 from ..spec import Gauge
 from ..theme import Theme
 
@@ -17,8 +17,6 @@ def build(spec: object, theme: Theme) -> list[Row]:
         raise TypeError(f"gauge.build expected Gauge, got {type(spec).__name__}")
 
     p = theme.palette
-    g = theme.glyphs
-    filled = round(spec.fraction * theme.bar_width)
 
     if spec.is_loading:
         readout = "· · ·"
@@ -29,13 +27,12 @@ def build(spec: object, theme: Theme) -> list[Row]:
         readout = f"{human(spec.value)} / {human(spec.target)}{unit} · {pct:.0f}%"
         value_color = p.accent
 
-    bar: Row = (
-        seg(g.bar_full * filled, p.accent),
-        seg(g.bar_empty * (theme.bar_width - filled), None, dim=True),
+    row: Row = (
+        *bar(spec.fraction, theme.bar_width, p.accent, theme),
         seg("  "),
         seg(readout, value_color, bold=not spec.is_loading),
     )
-    rows: list[Row] = [bar]
+    rows: list[Row] = [row]
     if spec.caption:
         rows.append((seg(spec.caption, p.muted, dim=True),))
     return rows
