@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — Capability Program M2 (sandbox foundation)
+
+- new `remy/sandbox/`: bubblewrap profile argv builder (three frozen profiles —
+  skill / pip / toolchain, each wrapped in `systemd-run --user --scope` for
+  memory/pids/wall-clock caps) and host-viability detection (unprivileged
+  userns, bwrap, cgroup v2 memory delegation)
+- `--doctor` now reports the three sandbox prerequisites; the userns check is the
+  single biggest on-box unknown and gates the whole approach
+- `docs/design/on-box-checklist.md`: the runbook for the powered-on Jetson
+  (M0 audio validation, M1 SDK benchmark/resume, M2 userns probe)
+- NOT YET (on-box gated): routing skill execution through the sandbox and
+  deleting the in-process `exec_module` path in loader.py — that behavior switch
+  needs a real bwrap + a passing userns check to validate
+
 ## Unreleased — Capability Program M1 (Agent SDK, scaffolding)
 
 - second agent engine behind the existing `AgentLine` interface: `[claude]

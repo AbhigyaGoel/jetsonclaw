@@ -1,6 +1,7 @@
 # ADR 0003: bubblewrap as the one sandbox, three profiles
 
-Status: proposed
+Status: accepted — foundation landed 2026-08-06 (M2: profiles + detection +
+--doctor); the loader execution switch is gated on the on-box userns check
 Date: 2026-08-06
 
 ## Context

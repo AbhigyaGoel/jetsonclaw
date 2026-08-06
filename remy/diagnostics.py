@@ -115,6 +115,21 @@ def run_doctor(cfg: Config) -> int:
     _check("spotify (optional)", spotify, "" if spotify else "not linked",
            "put OAuth tokens at " + cfg.spotify.token_file)
 
+    # sandbox (M2 prerequisites; informational until the loader switch lands).
+    # userns is the single biggest on-box unknown — see on-box-checklist.md.
+    from .sandbox.detect import sandbox_report
+    rep = sandbox_report()
+    _check("sandbox: user namespaces", rep["userns"],
+           "unprivileged userns on" if rep["userns"] else "unavailable",
+           "enable unprivileged user namespaces on the L4T kernel "
+           "(docs/design/on-box-checklist.md); the whole sandbox plan needs this")
+    _check("sandbox: bubblewrap", rep["bwrap"],
+           "bwrap" if rep["bwrap"] else "not installed",
+           "sudo apt install bubblewrap socat")
+    _check("sandbox: cgroup v2 memory", rep["cgroup_v2"],
+           "delegated" if rep["cgroup_v2"] else "no memory controller",
+           "needs cgroup v2 with a delegated memory controller for MemoryMax")
+
     core_ok = all(results)
     print(f"\n{'all core checks passed — say the wake word' if core_ok else 'fix the ✗ items above, then re-run --doctor'}\n")
     return 0 if core_ok else 1
