@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased — Capability Program M4 (credential broker, core)
+
+- new `remy/secrets/`: age-encrypted secret store (one file per credential,
+  pluggable crypto backend so store logic is testable without the age binary; the
+  real backend execs age across a process boundary) + an aws-vault-shaped token
+  broker (loopback HTTP, per-invocation bearer, refresh secret never leaves the
+  broker) + `requires.credential` manifest field
+- env-scrub wired into the live CLI engine: provider secrets (SPOTIFY_*, GH_TOKEN,
+  ANTHROPIC_API_KEY, ...) are stripped from the agent's environment while the
+  subscription OAuth token is kept — a synthesized skill can't echo them
+- `--doctor` reports the age binary and store-permission prerequisites
+- NOT YET (on-box gated): real Google/GitHub OAuth refreshers, the age
+  encrypt/decrypt round-trip, wiring the broker into skill spawning, and the
+  Spotify-tokens-into-the-broker migration
+- (redaction of `ya29.`/`gho_`/`refresh_token`/`AIza` in durable writes, ADR
+  0004's leak layer, already shipped in M0)
+
 ## Unreleased — Billing/auth guardrails + cost ledger
 
 - cost ledger (`remy/cost.py`): parses `total_cost_usd`/`usage`/`session_id` from

@@ -138,6 +138,19 @@ def run_doctor(cfg: Config) -> int:
            "delegated" if rep["cgroup_v2"] else "no memory controller",
            "needs cgroup v2 with a delegated memory controller for MemoryMax")
 
+    # credential store (M4 prerequisites; informational until the broker wires in)
+    from .secrets.detect import (age_available, identity_file_secure,
+                                 secrets_dir_secure)
+    secrets_dir = Path.home() / ".remy" / "secrets"
+    _check("secrets: age binary", age_available(),
+           "age" if age_available() else "not installed",
+           "sudo apt install age (or rage); REMY execs it, never links it")
+    _check("secrets: store perms (0700)", secrets_dir_secure(secrets_dir),
+           "0700 or absent", "chmod 700 ~/.remy/secrets")
+    _check("secrets: identity perms (0600)",
+           identity_file_secure(secrets_dir / "identity.txt"),
+           "0600 or absent", "chmod 600 ~/.remy/secrets/identity.txt")
+
     core_ok = all(results)
     print(f"\n{'all core checks passed — say the wake word' if core_ok else 'fix the ✗ items above, then re-run --doctor'}\n")
     return 0 if core_ok else 1

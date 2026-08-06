@@ -34,6 +34,8 @@ from pathlib import Path
 
 import yaml
 
+from ..redact import redact
+
 COMMAND_TIMEOUT_SECS = 30
 _FRONTMATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*(\n|\Z)", re.DOTALL)
 
@@ -51,6 +53,7 @@ class DynamicSkill:
     script: str | None = None
     missing_bins: tuple[str, ...] = field(default=())
     missing_env: tuple[str, ...] = field(default=())
+    credential: str = ""  # requires.credential: broker provides a short-lived token
     watch_interval: float | None = None  # run on a schedule; speak on changed output
     inject_keywords: tuple[str, ...] = ()  # push body into chat context on match
     body: str = ""  # markdown after the frontmatter
@@ -104,7 +107,7 @@ class DynamicSkill:
         except subprocess.TimeoutExpired:
             return f"The {self.name} skill timed out."
         if result.returncode != 0:
-            detail = (result.stderr or result.stdout).strip()[:120]
+            detail = redact((result.stderr or result.stdout).strip())[:120]
             return f"The {self.name} skill failed: {detail}"
         return result.stdout.strip() or "Done."
 
@@ -167,6 +170,7 @@ def parse_skill(path: Path) -> DynamicSkill | None:
     missing = tuple(b for b in bins if shutil.which(b) is None)
     env_vars = [str(v) for v in (requires.get("env") or [])]
     missing_env = tuple(v for v in env_vars if not os.environ.get(v))
+    credential = str(requires.get("credential") or "")
 
     return DynamicSkill(
         name=name,
@@ -177,6 +181,7 @@ def parse_skill(path: Path) -> DynamicSkill | None:
         script=action.get("script"),
         missing_bins=missing,
         missing_env=missing_env,
+        credential=credential,
         watch_interval=watch_interval,
         inject_keywords=inject_keywords,
         body=body,

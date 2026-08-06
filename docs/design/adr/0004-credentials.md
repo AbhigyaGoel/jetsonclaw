@@ -1,6 +1,8 @@
 # ADR 0004: age-encrypted secret store plus a token broker
 
-Status: proposed
+Status: accepted — core landed 2026-08-06 (M4: store, broker, env-scrub,
+--doctor); real OAuth refreshers, the age round-trip, loader broker-injection,
+and the Spotify migration are on-box gated
 Date: 2026-08-06
 
 ## Context

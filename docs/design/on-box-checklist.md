@@ -151,6 +151,39 @@ launch land (they build on the M1 SDK, so clear the M1 gate first).
 
 ---
 
+## M4 — credential broker (core is device-independent; these need the box)
+
+The store, broker, env-scrub, and `requires.credential` parsing (`remy/secrets/`)
+are landed and tested off-box. These apply once real refreshers and the loader
+broker-injection land.
+
+1. **age round-trip under the remy user.**
+   ```bash
+   which age
+   python -m remy --doctor | grep -i "secrets"
+   age-keygen -o ~/.remy/secrets/identity.txt && chmod 600 ~/.remy/secrets/identity.txt
+   ```
+   Encrypt a test value and decrypt it back; confirm `~/.remy/secrets` is 0700 and
+   the identity file 0600.
+
+2. **The loopback grant flow from the owner's phone** against a 127.0.0.1
+   redirect — confirm the chosen relay actually delivers the code back to REMY
+   (the phone's browser hits its own loopback, not the Jetson's).
+
+3. **GitHub device flow by voice** (the cheapest full-loop proof): REMY speaks the
+   code, owner approves on the phone, the token lands in the store, a skill fetches
+   a short-lived token from the broker — and the refresh token never appears in a
+   transcript, log, git diff, or the skill's env.
+
+4. **Google OAuth reality:** the owner must create their own Google Cloud OAuth
+   client and set it to "In production (unverified)", or Gmail/Calendar refresh
+   tokens die every 7 days. Device flow cannot grant those scopes — loopback only.
+
+5. **Spotify migration:** move `~/spotify_tokens.json` into the broker (migration
+   #1) and confirm the M0 127.0.0.1 redirect fix works end to end.
+
+---
+
 ## Order
 
 Run **M2 step 1 first** — if unprivileged userns is off, the sandbox milestone

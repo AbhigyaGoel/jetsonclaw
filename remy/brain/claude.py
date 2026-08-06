@@ -13,11 +13,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
 from pathlib import Path
 from typing import AsyncIterator, Protocol
 
 from ..config import ClaudeConfig
+from ..redact import redact
+from ..secrets.scrub import scrub_env
 
 
 class AgentLine:
@@ -43,7 +46,7 @@ def record_usage(ledger, line: "AgentLine", task: str, *,
     usage = line.usage or {}
     ledger.record(
         cost_usd=line.cost_usd,
-        task=task,
+        task=redact(task),  # the task is the raw prompt; keep secrets out of the ledger
         session_id=line.session_id,
         input_tokens=int(usage.get("input_tokens", 0)),
         output_tokens=int(usage.get("output_tokens", 0)),
@@ -159,6 +162,8 @@ class ClaudeBridge:
 
         proc = await asyncio.create_subprocess_exec(
             *cmd, cwd=str(cwd),
+            # Strip provider secrets from the agent's env; keep the OAuth token.
+            env=scrub_env(os.environ),
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         got_result = False
@@ -191,7 +196,8 @@ class ClaudeBridge:
             if proc.stderr is not None:
                 stderr = await proc.stderr.read()
             yield AgentLine("error",
-                            f"agent exited ({proc.returncode}): {stderr.decode()[:500]}")
+                            redact(f"agent exited ({proc.returncode}): "
+                                   f"{stderr.decode()[:500]}"))
 
     @staticmethod
     def _parse(raw: bytes) -> AgentLine | None:
