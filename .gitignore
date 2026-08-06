@@ -9,3 +9,6 @@ venv/
 spotify_tokens.json
 .remy/
 config.toml
+
+# generated demo artifacts
+remy_ui/*.html
