@@ -59,13 +59,16 @@ class Jarvis:
         self._last_timing: dict[str, float] = {}
         self._brief_pending = False  # next utterance is a long-form agent brief
         self.claude = ClaudeBridge(cfg.claude)
+        # Write the agent's deny-list settings up front so the very first session
+        # cannot Read the secret stores (containment before capability).
+        self.claude.write_settings()
         self.spotify = SpotifySkill(cfg.spotify)
         self.skills = SkillLoader(self.workspace.skills_dir)
         self.self_iterate = SelfIterateSkill(self.claude, guard, repo_dir, bus,
                                              skills_dir=self.workspace.skills_dir)
         self.speaker = Speaker(cfg.tts.voice, cfg.tts.voices_dir,
                                cfg.audio.speaker_device, cfg.tts.length_scale,
-                               cfg.tts.enabled)
+                               cfg.tts.enabled, cfg.tts.binary)
         self._transcriber: Transcriber | None = None
         self._capture: CaptureLoop | None = None
 

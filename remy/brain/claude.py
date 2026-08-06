@@ -25,12 +25,36 @@ class AgentLine:
         self.text = text
 
 
+def deny_settings(cfg: ClaudeConfig) -> dict:
+    """Claude Code settings that deny Read on REMY's secret stores."""
+    return {"permissions": {"deny": [f"Read({p})" for p in cfg.deny_read]}}
+
+
 class ClaudeBridge:
     def __init__(self, cfg: ClaudeConfig) -> None:
         self._cfg = cfg
+        self._settings_written = False
 
     def available(self) -> bool:
         return shutil.which(self._cfg.binary) is not None
+
+    def settings_path(self) -> Path:
+        return Path(self._cfg.agent_settings_file).expanduser()
+
+    def write_settings(self) -> Path | None:
+        """Persist the deny rules to the managed --settings file. Idempotent."""
+        if not self._cfg.deny_read:
+            return None
+        path = self.settings_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(deny_settings(self._cfg), indent=2),
+                        encoding="utf-8")
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+        self._settings_written = True
+        return path
 
     def build_cmd(self, prompt: str, system_append: str | None = None,
                   continue_session: bool = False) -> list[str]:
@@ -42,6 +66,8 @@ class ClaudeBridge:
         ]
         if continue_session:
             cmd.append("--continue")  # resume the most recent session in workdir
+        if self._cfg.deny_read:
+            cmd += ["--settings", str(self.settings_path())]
         if self._cfg.mcp_config:
             cmd += ["--mcp-config", str(Path(self._cfg.mcp_config).expanduser())]
         if system_append:
@@ -58,6 +84,13 @@ class ClaudeBridge:
             return
 
         cwd = Path(workdir or self._cfg.workdir).expanduser()
+        # Make sure the deny-list settings file exists before we hand the agent
+        # its Read tool. Once per process; cheap and idempotent.
+        if self._cfg.deny_read and not self._settings_written:
+            try:
+                self.write_settings()
+            except OSError:
+                pass
         cmd = self.build_cmd(prompt, system_append, continue_session)
 
         proc = await asyncio.create_subprocess_exec(

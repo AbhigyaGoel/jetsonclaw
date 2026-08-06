@@ -57,6 +57,8 @@ Safety, in order: spoken yes required before any agent runs; the agent has no sh
 
 Play a track by name, play a playlist by fuzzy match, skip, pause, resume, what's playing. Needs OAuth tokens at `spotify.token_file`; remove the file and the feature disappears.
 
+Link it with `python3 scripts/spotify_auth.py --client-id XXX --client-secret YYY`, which runs a 127.0.0.1 loopback consent flow and writes the tokens. Register the redirect URI `http://127.0.0.1:8888/callback` in your Spotify app first — Spotify rejects `localhost` and LAN-IP redirects since 2025.
+
 ## Surfaces
 
 - **TUI** on the device: block letters, VU meter, conversation and agent panes, input box

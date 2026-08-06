@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — Capability Program M0 (safety rails)
+
+- Piper runs out-of-process: REMY execs the `piper` binary and streams its audio
+  instead of importing the (now GPL-3.0) `piper-tts`; a license guard fails
+  `--selftest`/`--doctor` if a GPL piper-tts is installed in-process
+- agent Read is denied on REMY's secret stores via a managed `--settings` file
+  (`~/.remy/secrets`, tokens, credentials) — enforced before those stores exist
+- secret-shaped tokens are redacted before any durable write (episodic memory,
+  daily summaries, the evolution journal)
+- `scripts/spotify_auth.py`: link Spotify over a 127.0.0.1 loopback redirect
+  (Spotify rejects `localhost`/LAN-IP redirects since 2025)
+
 ## v0.3.0 - 2026-06-12
 
 - provider-agnostic chat brain: ollama or any OpenAI-compatible endpoint

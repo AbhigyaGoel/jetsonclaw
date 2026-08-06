@@ -11,6 +11,7 @@ import urllib.request
 from pathlib import Path
 
 from .config import Config
+from .licensing import gpl_piper_installed
 
 
 def _check(label: str, ok: bool, detail: str = "", fix: str = "") -> bool:
@@ -53,8 +54,19 @@ def run_doctor(cfg: Config) -> int:
     voice = Path(cfg.tts.voices_dir).expanduser() / f"{cfg.tts.voice}.onnx"
     results.append(_check("piper voice", voice.is_file() or not cfg.tts.enabled,
                           cfg.tts.voice,
-                          f"python3 -m piper.download_voices {cfg.tts.voice} "
-                          f"--data-dir {cfg.tts.voices_dir}"))
+                          f"download {cfg.tts.voice}.onnx and .onnx.json into "
+                          f"{cfg.tts.voices_dir} (rhasspy.github.io/piper-samples)"))
+
+    # piper binary — TTS runs it out-of-process (its GPL stays across the boundary)
+    piper_bin_ok = shutil.which(cfg.tts.binary) is not None or not cfg.tts.enabled
+    results.append(_check("piper binary", piper_bin_ok, cfg.tts.binary,
+                          "install the piper binary; REMY execs it, never imports it"))
+
+    # license guard — a GPL piper-tts must not be importable in-process
+    gpl_reason = gpl_piper_installed()
+    results.append(_check("piper license (no in-proc GPL)", gpl_reason is None,
+                          gpl_reason or "clean",
+                          "pip uninstall piper-tts; use the piper binary instead"))
 
     # chat brain
     if cfg.chat.provider == "ollama":

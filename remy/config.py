@@ -56,6 +56,8 @@ class TtsConfig:
     voice: str = "en_GB-alan-medium"
     voices_dir: str = "~/.remy/voices"
     length_scale: float = 1.0
+    # Piper runs out-of-process (it is GPL; REMY is MIT — never import it).
+    binary: str = "piper"
 
 
 @dataclass(frozen=True)
@@ -93,6 +95,18 @@ class ClaudeConfig:
     # actionable requests nothing else handles escalate to the agent, which
     # solves them by growing a skill (set false for chat-only fallback)
     escalate: bool = True
+    # Paths the agent must never Read, even though it holds the Read tool. Written
+    # into a managed --settings file so the deny holds regardless of the workdir.
+    # Containment before capability: the secrets store (M4) is denied before it
+    # exists. Set () to disable (not recommended).
+    deny_read: tuple[str, ...] = (
+        "~/.remy/secrets/**",
+        "~/.remy/env",
+        "~/.remy/agent-settings.json",
+        "~/spotify_tokens.json",
+        "~/.claude/.credentials.json",
+    )
+    agent_settings_file: str = "~/.remy/agent-settings.json"
 
 
 @dataclass(frozen=True)

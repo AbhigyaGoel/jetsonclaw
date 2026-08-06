@@ -24,6 +24,7 @@ model = "base"                 # tiny is faster but mishears uncommon words
 enabled = true
 voice = "en_GB-alan-medium"    # the butler. browse: rhasspy.github.io/piper-samples
 length_scale = 1.0             # >1 = slower speech
+binary = "piper"               # REMY runs the piper binary out-of-process (GPL stays out)
 
 [chat]
 provider = "ollama"            # or "openai" for any /v1/chat/completions endpoint
@@ -43,9 +44,14 @@ allowed_tools = "Read,Edit,Write,Glob,Grep"  # add ",Bash" only if you accept th
 confirm_tasks = true           # require a spoken "yes" before agent tasks run
 # mcp_config = "~/.remy/mcp.json"  # agent sessions inherit these MCP servers
 # heartbeat_hours = 6            # run ~/.remy/HEARTBEAT.md as an agent task on this cadence
+# The agent is denied Read on REMY's secret stores via a managed --settings file.
+# deny_read = ["~/.remy/secrets/**", "~/spotify_tokens.json", "~/.claude/.credentials.json"]
 
 [spotify]
 token_file = "~/spotify_tokens.json"
+# Link Spotify with a 127.0.0.1 loopback (localhost is rejected since 2025):
+#   python3 scripts/spotify_auth.py --client-id XXX --client-secret YYY
+# Register redirect URI http://127.0.0.1:8888/callback in your Spotify app first.
 
 [server]
 host = "0.0.0.0"

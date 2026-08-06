@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from ..redact import redact
+
 _WORD = re.compile(r"[a-z0-9']+")
 _STOPWORDS = frozenset(
     "a an the is are was were be been i you he she it we they my your his her "
@@ -54,8 +56,11 @@ class EpisodicStore:
     def append(self, user: str, reply: str, intent: str,
                ts: float | None = None) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
-        record = {"ts": time.time() if ts is None else ts, "user": user,
-                  "reply": reply[:1000], "intent": intent}
+        # Redact secrets before they reach disk (and the consolidation chain that
+        # feeds daily summaries and MEMORY.md). Redact before truncating so a
+        # token straddling the 1000-char cut is still caught.
+        record = {"ts": time.time() if ts is None else ts, "user": redact(user),
+                  "reply": redact(reply)[:1000], "intent": intent}
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 

@@ -24,8 +24,12 @@ dependencies = [
     "pytest-asyncio>=0.23",
 ]
 
+# Piper is intentionally NOT a Python dependency. Its current engine
+# (OHF-Voice/piper1-gpl, pip `piper-tts` >= 1.3) is GPL-3.0; importing it would
+# make REMY (MIT) a GPL derivative. REMY runs the `piper` binary out-of-process
+# instead — install it via the OS / a release build (see scripts/install.sh).
+# The remy/licensing.py guard fails --selftest if a GPL piper-tts is installed.
 [project.optional-dependencies]
-voice = ["piper-tts>=1.4"]
 dev = ["ruff>=0.4"]
 
 [project.scripts]

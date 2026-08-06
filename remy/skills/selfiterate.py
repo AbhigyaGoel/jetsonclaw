@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..brain.claude import ClaudeBridge
 from ..events import EventBus, EventType
+from ..redact import redact
 from ..supervisor import BootGuard, _git
 from .activate import activate_skills
 from .loader import SkillLoader
@@ -67,9 +68,10 @@ def append_evolution(journal: Path, instruction: str, outcome: str,
     """One auditable line per self-change: when, what was asked, what happened.
     'Why did you change yourself?' gets answered from this file, not vibes."""
     when = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+    # The agent's result can echo tokens it read; strip them from the audit log.
     entry = (f"\n## {when} ({ref})\n"
-             f"asked: {instruction.strip()}\n"
-             f"result: {outcome.strip()[:300]}\n")
+             f"asked: {redact(instruction.strip())}\n"
+             f"result: {redact(outcome.strip())[:300]}\n")
     journal.parent.mkdir(parents=True, exist_ok=True)
     with open(journal, "a", encoding="utf-8") as f:
         if journal.stat().st_size == 0:

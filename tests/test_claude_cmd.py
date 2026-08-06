@@ -1,4 +1,4 @@
-from remy.brain.claude import ClaudeBridge
+from remy.brain.claude import ClaudeBridge, deny_settings
 from remy.config import ClaudeConfig
 
 
@@ -12,6 +12,33 @@ def test_base_cmd_has_no_shell_tool():
     assert "Bash" not in tools
     assert "--continue" not in cmd
     assert "--mcp-config" not in cmd
+
+
+def test_deny_settings_denies_reading_secrets():
+    deny = deny_settings(ClaudeConfig())["permissions"]["deny"]
+    assert "Read(~/.remy/secrets/**)" in deny
+    assert "Read(~/spotify_tokens.json)" in deny
+
+
+def test_base_cmd_passes_deny_settings_file():
+    b = bridge()
+    cmd = b.build_cmd("do a thing")
+    assert "--settings" in cmd
+    assert cmd[cmd.index("--settings") + 1] == str(b.settings_path())
+
+
+def test_no_settings_flag_when_deny_disabled():
+    assert "--settings" not in bridge(deny_read=()).build_cmd("task")
+
+
+def test_write_settings_persists_deny_list(tmp_path):
+    target = tmp_path / "agent-settings.json"
+    b = bridge(agent_settings_file=str(target))
+    path = b.write_settings()
+    assert path == target
+    import json
+    written = json.loads(target.read_text())
+    assert "Read(~/.remy/secrets/**)" in written["permissions"]["deny"]
 
 
 def test_continue_session_flag():

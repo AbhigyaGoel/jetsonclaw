@@ -84,6 +84,18 @@ def test_working_memory_capped_at_max_turns(tmp_path):
     assert turns[-1].user == "q9"
 
 
+def test_append_redacts_secrets(tmp_path):
+    store = EpisodicStore(tmp_path / "memory")
+    store.append("my github token is ghp_" + "A" * 36,
+                 "saved ya29." + "b.cd-E_f" * 5, "chat", ts=NOW)
+    raw = store.path.read_text(encoding="utf-8")
+    assert "ghp_" not in raw
+    assert "ya29." not in raw
+    assert "[redacted:github-token]" in raw
+    ep = store.all()[0]
+    assert "[redacted:google-oauth]" in ep.reply
+
+
 def test_search_summaries(tmp_path):
     store = EpisodicStore(tmp_path / "memory")
     store.dir.mkdir(parents=True)
