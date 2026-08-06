@@ -1,6 +1,7 @@
 # ADR 0002: Detached jobs as systemd-run user units over a sqlite job table
 
-Status: proposed
+Status: accepted — core landed 2026-08-06 (M3: job table, state machine,
+reconciliation); the runner + systemd-run launch + app wiring are on-box gated
 Date: 2026-08-06
 
 ## Context

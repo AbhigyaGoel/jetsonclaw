@@ -122,9 +122,39 @@ on-box unknown in the program — check it before building on it.
 
 ---
 
+## M3 — detached job engine (pending the runner; core is device-independent)
+
+The job store, state machine, and reconciliation (`remy/jobs/`) are landed and
+tested off-box. These checks apply once `jobrunner.py` + the `systemd-run --user`
+launch land (they build on the M1 SDK, so clear the M1 gate first).
+
+1. **User lingering + `systemctl --user`.**
+   ```bash
+   loginctl enable-linger "$USER"
+   loginctl show-user "$USER" | grep Linger      # Linger=yes
+   systemctl --user is-system-running || true
+   ```
+   - Fail: transient units die when you log out — the whole point is surviving
+     that, so linger must be on.
+
+2. **A transient unit survives a REMY self-restart.**
+   Launch a `systemd-run --user --unit=remy-job-<id>` sleeper, restart REMY (and
+   re-exec it), and confirm the unit is still `active` and the job row still says
+   `running` — reconciliation must NOT flip a live unit.
+
+3. **Reconciliation after an unclean exit.**
+   `kill -9` a job's unit, restart REMY, and confirm the boot sweep flips exactly
+   that row to `failed` (not any live sibling job).
+
+4. **`RuntimeMaxSec` / `MemoryMax` honored in `--user` mode** on systemd 249
+   (memory/pids delegate by default; CPU may need a root drop-in — see ADR 0003).
+
+---
+
 ## Order
 
 Run **M2 step 1 first** — if unprivileged userns is off, the sandbox milestone
 changes shape and it's better to know before anything else. Then M0 audio (so
-REMY talks), then the M1 benchmark/resume gate. Record every measured number back
-into the ADR that carried it as an ESTIMATE.
+REMY talks), then the M1 benchmark/resume gate, then M3's linger + reconciliation
+checks. Record every measured number back into the ADR that carried it as an
+ESTIMATE.

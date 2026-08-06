@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — Capability Program M3 (detached job engine, core)
+
+- new `remy/jobs/`: the sqlite job table + state machine + crash-recovery sweep
+  that ADR 0002 hand-rolls because no queue library stores the agent-session link
+- state machine queued -> running -> {done,failed,cancelled} with paused
+  reachable from running; illegal transitions are rejected at the store
+- reconciliation is pid/unit-gated: a `running` row whose systemd unit is gone is
+  flipped to failed, but a live unit is never touched (no double-run), with the
+  unit-liveness check injected so it's testable without systemd
+- the job row carries the Claude session id so a job re-attaches via the M1
+  `resume=` path after a REMY self-restart
+- NOT YET (on-box gated): `jobrunner.py`, the `systemd-run --user` launch, the
+  app.py long-task branch, and the TUI/PWA jobs view — they need systemd user
+  lingering and build on the unvalidated M1 SDK
+
 ## Unreleased — Capability Program M2 (sandbox foundation)
 
 - new `remy/sandbox/`: bubblewrap profile argv builder (three frozen profiles —
