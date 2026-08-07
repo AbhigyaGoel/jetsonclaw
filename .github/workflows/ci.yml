@@ -19,6 +19,10 @@ jobs:
       # Light install: heavy audio deps (openwakeword, faster-whisper, piper)
       # defer their imports, so the selftest gate runs without them — same
       # trick the on-device self-iteration check relies on.
-      - run: pip install "numpy<2" fastapi uvicorn websockets textual pyyaml pytest pytest-asyncio ruff "tomli; python_version < '3.11'"
+      # ruff pinned: it's pre-1.0 and its default rule set drifts between
+      # releases; an unpinned install silently broke this gate mid-2026. The
+      # explicit [tool.ruff.lint] select in pyproject is the real guard; this
+      # pin is belt-and-suspenders.
+      - run: pip install "numpy<2" fastapi uvicorn websockets textual pyyaml pytest pytest-asyncio "ruff==0.15.16" "tomli; python_version < '3.11'"
       - run: ruff check remy tests
       - run: python -m remy --selftest
